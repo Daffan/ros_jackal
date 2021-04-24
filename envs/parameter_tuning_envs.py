@@ -1,7 +1,9 @@
-from envs.dwa_base import DWABase
+from typing import Any, NamedTuple
 from gym.spaces import Box
 import numpy as np
 import rospy
+
+from envs.dwa_base import DWABase, DWABaseLaser, DWABaseCostmap
 
 # A contant dict that define the ranges of parameters
 RANGE_DICT = {
@@ -31,31 +33,13 @@ class DWAParamContinuous(DWABase):
         self.param_list = param_list
         self.param_init = param_init
 
-        # 720 laser scan + local goal (in angle)
-        self.observation_space = Box(
-            low=np.array([-1]*(721)),
-            high=np.array([-1]*(721)),
-            dtype=np.float32
-        )
         # same as the parameters to tune
         self.action_space = Box(
             low=np.array([RANGE_DICT[k][0] for k in self.param_list]),
             high=np.array([RANGE_DICT[k][1] for k in self.param_list]),
             dtype=np.float32
         )
-        self.reward_range = (-np.inf, np.inf)
-
-    def _get_observation(self):
-        # observation is the 720 dim laser scan + one local goal in angle
-        laser_scan = self._get_laser_scan()
-        local_goal = self._get_local_goal()
-        
-        laser_scan = (laser_scan - self.laser_clip/2.) / self.laser_clip # scale to (-0.5, 0.5)
-        local_goal = local_goal / (2.0 * np.pi) # scale to (-0.5, 0.5)
-
-        obs = np.concatenate([laser_scan, local_goal])
-
-        return obs
+        self.reward_range = (0, 10)
 
     def _get_done(self):
         success = self._get_success()
@@ -89,3 +73,13 @@ class DWAParamContinuous(DWABase):
             self.move_base.set_navi_param(param_name, param_value)
         # Wait for robot to navigate for one time step
         rospy.sleep(self.time_step)
+
+
+class DWAParamContinuousLaser(DWAParamContinuous, DWABaseLaser):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+
+class DWAParamContinuousCostmap(DWAParamContinuous, DWABaseCostmap):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)

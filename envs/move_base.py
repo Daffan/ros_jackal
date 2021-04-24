@@ -2,21 +2,20 @@ import rospy
 import actionlib
 from math import radians
 import numpy as np
+import scipy.signal
+import time
 
-from std_srvs.srv import Empty
 import dynamic_reconfigure.client
-from gazebo_msgs.msg import ModelState
-from geometry_msgs.msg import Quaternion, Pose, PoseWithCovarianceStamped
-from move_base_msgs.msg import MoveBaseGoal, MoveBaseAction
 from robot_localization.srv import SetPose
 from pyquaternion import Quaternion as qt
 
-from std_msgs.msg import String
+from std_srvs.srv import Empty
+from gazebo_msgs.msg import ModelState
+from geometry_msgs.msg import Quaternion, Pose, PoseWithCovarianceStamped, Twist, PoseStamped
+from move_base_msgs.msg import MoveBaseGoal, MoveBaseAction
 from sensor_msgs.msg import LaserScan
-from geometry_msgs.msg import Twist, Pose
-from nav_msgs.msg import Path, Odometry
-import scipy.signal
-import time
+from nav_msgs.msg import OccupancyGrid, Path, Odometry
+from nav_msgs.srv import GetPlan
 
 def _create_MoveBaseGoal(x, y, angle):
     """
@@ -64,6 +63,7 @@ class Robot_config():
         self.los = 1
         self.bad_vel = 0
         self.vel_counter = 0
+        self.qt = (0, 0, 0, 0)
 
     def get_robot_status(self, msg):
         q1 = msg.pose.pose.orientation.x
@@ -74,6 +74,7 @@ class Robot_config():
         self.Y = msg.pose.pose.position.y
         self.Z = msg.pose.pose.position.z
         self.PSI = np.arctan2(2 * (q0*q3 + q1*q2), (1 - 2*(q2**2+q3**2)))
+        self.qt = (q1, q2, q3, q0)
 
     def get_global_path(self, msg):
         gp = []
@@ -126,11 +127,15 @@ def transform_gp(gp, X, Y, PSI):
 class MoveBase():
 
     def __init__(self, goal_position = [6, 6, 0]):
-        self.client = dynamic_reconfigure.client.Client('move_base/TrajectoryPlannerROS')
+        self.goal_position = goal_position
+        self.planner_client = dynamic_reconfigure.client.Client('move_base/TrajectoryPlannerROS')
+        self.local_costmap_client = dynamic_reconfigure.client.Client('move_base/local_costmap/inflater_layer')
+        self.global_costmap_client = dynamic_reconfigure.client.Client('move_base/global_costmap/inflater_layer')
         self.nav_as = actionlib.SimpleActionClient('/move_base', MoveBaseAction)
         self.global_goal = _create_MoveBaseGoal(goal_position[0], goal_position[1], goal_position[2])
         self._reset_odom = rospy.ServiceProxy('/set_pose', SetPose)
         self._clear_costmap = rospy.ServiceProxy('/move_base/clear_costmaps', Empty)
+        self._make_plan = rospy.ServiceProxy('/move_base/make_plan', GetPlan)
 
         self.robot_config = Robot_config()
         self.sub_robot = rospy.Subscriber("/odometry/filtered", Odometry, self.robot_config.get_robot_status)
@@ -140,13 +145,15 @@ class MoveBase():
     def set_navi_param(self, param_name, param):
 
         if param_name != 'inflation_radius':
-            self.client.update_configuration({param_name: param})
+            self.planner_client.update_configuration({param_name: param})
             rospy.set_param('/move_base/TrajectoryPlannerROS/' + param_name, param)
 
             if param_name == 'max_vel_theta':
-                self.client.update_configuration({'min_vel_theta': -param})
+                self.planner_client.update_configuration({'min_vel_theta': -param})
                 rospy.set_param('/move_base/TrajectoryPlannerROS/' + 'min_vel_theta', -param)
         else:
+            self.global_costmap_client.update_configuration({param_name: param})
+            self.local_costmap_client.update_configuration({param_name: param})
             rospy.set_param('/move_base/global_costmap/inflater_layer/' + param_name, param)
             rospy.set_param('/move_base/local_costmap/inflater_layer/' + param_name, param)
 
@@ -177,6 +184,41 @@ class MoveBase():
             self._clear_costmap()
         except rospy.ServiceException:
             print ("/clear_costmaps service call failed")
+
+    def make_plan(self):
+        # get_plan = GetPlan()
+
+        start = PoseStamped()
+        start.header.frame_id = "odom"
+        start.pose.position.x = self.robot_config.X
+        start.pose.position.y = self.robot_config.Y
+        start.pose.position.z = self.robot_config.Z
+        x, y, z, w = self.robot_config.qt
+        start.pose.orientation.x = x
+        start.pose.orientation.y = y
+        start.pose.orientation.z = z
+        start.pose.orientation.w = w
+
+        goal = PoseStamped()
+        x, y, angle = self.goal_position
+        e = qt(axis = [0, 0, 1], angle = angle).elements
+        goal.header.frame_id = "odom"
+        goal.pose.position.x = x
+        goal.pose.position.y = y
+        goal.pose.position.z = 0
+        goal.pose.orientation = Quaternion(e[1], e[2], e[3], e[0])
+
+        tolerance = 0.5
+        
+        # get_plan.start = start
+        # get_plan.goal = goal
+        
+
+        rospy.wait_for_service('/move_base/make_plan')
+        try:
+            self._make_plan(start, goal, tolerance)
+        except rospy.ServiceException:
+            print ("/make_plan service call failed")
 
     def reset_global_goal(self, goal_position = [6, 6, 0]):
         self.global_goal = _create_MoveBaseGoal(goal_position[0], goal_position[1], goal_position[2])
@@ -232,3 +274,12 @@ class MoveBase():
         gp = self.robot_config.global_path
         gp = transform_gp(gp, self.robot_config.X, self.robot_config.Y, self.robot_config.PSI)
         return gp.T
+
+    def get_costmap(self):
+        cm = None
+        while cm is None:
+            try:
+                cm = rospy.wait_for_message("/move_base/global_costmap/costmap", OccupancyGrid, timeout=5)
+            except: 
+                pass
+        return cm

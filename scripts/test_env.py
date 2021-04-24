@@ -14,8 +14,9 @@ import numpy as np
 import envs.registration
 
 def main():
+    """
     env = gym.make(
-        id='dwa_param_continuous-v0', 
+        id='dwa_param_continuous_costmap-v0', 
         param_init=[0.5, 1.57, 6, 20, 0.75, 1, 0.3],
         param_list=["max_vel_x", 
                       "max_vel_theta", 
@@ -24,7 +25,19 @@ def main():
                       "path_distance_bias", 
                       "goal_distance_bias", 
                       "inflation_radius"],
-        world_name='world_0.world'
+        world_name='world_0.world',
+        gui=True,
+        init_position=[-2, 2, np.pi/2],
+        goal_position=[0, 10, 0]
+    )
+    """
+    env = gym.make(
+        id='motion_control_continuous_laser-v0', 
+        world_name='world_0.world',
+        gui=True,
+        init_position=[-2, 2, np.pi/2],
+        goal_position=[0, 10, 0],
+        time_step=0.2
     )
 
     env.reset()
@@ -37,9 +50,9 @@ def main():
     bias = (high + low) / 2
     scale = (high - low) / 2
 
-    for _ in range(100): # run 10 steps
+    for _ in range(1000): # run 10 steps
 
-        actions = 2*(np.random.rand(7) - 0.5)
+        actions = 2*(np.random.rand(env.action_space.shape[0]) - 0.5)
         actions *= scale
         actions += bias
 
@@ -51,6 +64,7 @@ def main():
         p = env.gazebo_sim.get_model_state().pose.position
         print('current step: %d, X position: %f(world_frame), %f(odem_frame), Y position: %f(world_frame), %f(odem_frame), rew: %f' %(count, p.x, X, p.y, Y , rew))
         print("actions: ", actions)
+        # env.visual_costmap(obs)
         if done:
             env.reset()
             print(count, ep_rew)

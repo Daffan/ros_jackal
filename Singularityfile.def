@@ -18,6 +18,7 @@ From: ros:melodic
     git clone https://github.com/jackal/jackal_desktop.git
 
     source /opt/ros/melodic/setup.bash
-    cd ..; rosdep init; rosdep update
+    cd ..; catkin_make
+    source devel/setup.bash
+    rosdep init; rosdep update
     rosdep install -y --from-paths . --ignore-src --rosdistro=melodic
-    catkin_make
