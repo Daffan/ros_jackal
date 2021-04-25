@@ -115,7 +115,7 @@ class DWABase(gym.Env):
         raise NotImplementedError()
 
     def _get_info(self):
-        raise NotImplementedError()
+        return dict(world=self.world_name)
 
     def _get_local_goal(self):
         """get local goal in angle

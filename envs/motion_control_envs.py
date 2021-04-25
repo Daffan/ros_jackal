@@ -57,7 +57,9 @@ class MotionControlContinuous(DWABase):
         return rew
 
     def _get_info(self):
-        return dict(success=self._get_success())
+        info = dict(success=self._get_success(), params=self.params)
+        info.update(super()._get_info())
+        return info
 
     def _take_action(self, action):
         linear_speed, angular_speed = action

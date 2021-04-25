@@ -1,0 +1,48 @@
+env_config:
+  use_container: false
+  env: "dwa_param_continuous_laser-v0"
+  seed: 13
+  kwargs:
+    param_init: [0.5, 1.57, 6, 20, 0.75, 1, 0.3]
+    param_list: ["max_vel_x", 
+                 "max_vel_theta", 
+                 "vx_samples", 
+                 "vtheta_samples", 
+                 "path_distance_bias", 
+                 "goal_distance_bias", 
+                 "inflation_radius"]
+    world_name: "world_0.world"
+    gui: false
+    init_position: [-2, 2, 1.57]
+    goal_position: [0, 10, 0]
+
+training_config:
+  algorithm: "TD3"
+  buffer_size: 20000
+  actor_lr: 0.0005
+  critic_lr: 0.001
+  num_layers: 2
+  hidden_size: 512
+  exploration_noise: 0.5
+  exploration_ratio: 1
+
+  policy_args:
+    tau: 0.005
+    gamma: 0.95
+    policy_noise: 0.2
+    update_actor_freq: 2
+    noise_clip: 0.5
+    reward_normalization: false
+    ignore_done: false
+    estimation_step: 5
+
+  training_args:
+    max_epoch: 5
+    step_per_epoch: 500
+    collect_per_step: 1
+    update_per_step: 10
+    batch_size: 128
+
+condor_config:
+  num_actor: 10
+  worlds: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
