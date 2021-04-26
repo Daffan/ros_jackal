@@ -14,7 +14,7 @@ import numpy as np
 import envs.registration
 
 def main():
-    """
+    
     env = gym.make(
         id='dwa_param_continuous_costmap-v0', 
         param_init=[0.5, 1.57, 6, 20, 0.75, 1, 0.3],
@@ -39,7 +39,7 @@ def main():
         goal_position=[0, 10, 0],
         time_step=0.2
     )
-
+    """
     env.reset()
     done  = False
     count = 0

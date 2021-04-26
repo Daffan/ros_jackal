@@ -10,12 +10,14 @@ import numpy as np
 import random
 import time
 import rospy
+import argparse
 
 from tianshou.exploration import GaussianNoise
 from tianshou.data import Batch
 
 from policy import TD3Policy, SACPolicy
 from train import initialize_envs, initialize_policy
+from envs import registration
 
 random.seed(43)
 
@@ -45,25 +47,37 @@ def load_model(model):
     model_path = join(BASE_PATH, 'policy.pth')
     state_dict = {}
     state_dict_raw = None
-    while state_dict_raw is None:
+    count = 0
+    while (state_dict_raw is None) and count < 10:
         try:
             state_dict_raw = torch.load(model_path)
         except:
-            time.sleep(0.1)
+            time.sleep(2)
             pass
+        time.sleep(2)
+        count += 1
+
+    if state_dict_raw is None:
+        raise FileNotFoundError("critic not initialized")
 
     model.load_state_dict(state_dict_raw)
     model = model.float()
     # exploration noise std
     with open(join(BASE_PATH, 'eps.txt'), 'r') as f:
         eps = None
-        while eps is not None:
+        count = 0
+        while (eps is None) and count < 10:
             try:
                 eps = float(f.readlines()[0])
             except IndexError:
                 pass
+            time.sleep(2)
+            count += 1
 
-    return model, eps
+    if eps is None:
+        raise FileNotFoundError("critic not initialized")
+
+    return model, eps 
 
 def write_buffer(traj, ep, id):
     with open(join(BASE_PATH, 'actor_%s' %(str(id)), 'traj_%d.pickle' %(ep)), 'wb') as f:
@@ -80,7 +94,7 @@ def get_world_name(config, id):
 
 def main(id):
 
-    config = init_actor(id)
+    config = initialize_actor(id)
     env_config = config['env_config']
     training_config = config["training_config"]
     world_name = get_world_name(config, id)
@@ -89,7 +103,7 @@ def main(id):
 
     policy, _ = initialize_policy(training_config, env)
 
-    print(">>>>>>>>>>>>>> Running on %s <<<<<<<<<<<<<<<<" %(world_name)
+    print(">>>>>>>>>>>>>> Running on %s <<<<<<<<<<<<<<<<" %(world_name))
     ep = 0
     while True:
         obs = env.reset()
@@ -97,7 +111,6 @@ def main(id):
         ep += 1
         traj = []
         done = False
-        count = 0
         policy, eps = load_model(policy)
         try:
             policy.set_exp_noise(GaussianNoise(sigma=eps))
@@ -113,17 +126,14 @@ def main(id):
                 actions = get_random_action()
                 actions = np.array(actions)
             obs_new, rew, done, info = env.step(actions)
-            count += 1
             info["world"] = world_name
             traj.append([obs, actions, rew, done, info])
             obs_batch = Batch(obs=[obs_new], info={})
             obs = obs_new
 
-        traj_new = traj
-        write_buffer(traj_new, ep, id)
+        write_buffer(traj, ep, id)
 
 if __name__ == '__main__':
-    import argparse
     parser = argparse.ArgumentParser(description = 'start an actor')
     parser.add_argument('--id', dest='actor_id', type = int, default = 1)
     id = parser.parse_args().actor_id

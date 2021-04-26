@@ -13,6 +13,8 @@ env_config:
                  "inflation_radius"]
     world_name: "world_0.world"
     gui: false
+    max_step: 100
+    time_step: 1
     init_position: [-2, 2, 1.57]
     goal_position: [0, 10, 0]
 

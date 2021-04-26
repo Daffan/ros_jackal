@@ -22,14 +22,7 @@ from envs import registration
 from offpolicy_trainer import offpolicy_trainer
 from wrapper import DummyVectorEnvSpace
 
-def parse_args():
-    parser = argparse.ArgumentParser(description = 'ROS-Jackal TD3 training')
-    parser.add_argument('--config', dest = 'config_path', type = str, default = 'td3/config.yaml', help = 'path to the configuration file')
-    parser.add_argument('--save', dest = 'save_path', type = str, default = 'logging/', help = 'path to the saving folder')
-
-    return parser.parse_args()
-
-def initialize_config(args=parse_args()):
+def initialize_config(args):
     config_path = args.config_path
     save_path = args.save_path
 
@@ -154,9 +147,13 @@ def generate_train_fn(training_config, policy, save_path):
                 sigma=compute_exp_noise(
                     e, training_config["exploration_noise"], 
                     training_config["exploration_ratio"], 
-                    training_config["training_args"]['max_epoch']
+                    training_config["training_args"]["max_epoch"]
                 )
             )
+        ),
+        torch.save(
+            policy.state_dict(), 
+            os.path.join(save_path, "policy.pth")
         )
     ]
 
@@ -178,8 +175,15 @@ def train(train_envs, policy, buffer, env_config, training_config):
     train_envs.close()
 
 if __name__ == "__main__":
-    env_config, training_config = initialize_config()
+    def parse_args():
+        parser = argparse.ArgumentParser(description = 'ROS-Jackal TD3 training')
+        parser.add_argument('--config', dest = 'config_path', type = str, default = 'td3/config.yaml', help = 'path to the configuration file')
+        parser.add_argument('--save', dest = 'save_path', type = str, default = 'logging/', help = 'path to the saving folder')
+
+        return parser.parse_args()
+
+    env_config, training_config = initialize_config(parse_args())
     seed(env_config)
     train_envs = initialize_envs(env_config)
-    policy, buffer = initialize_policy(training_config, train_envs)
+    policy, buffer = initialize_policy(training_config, train_envs.env[0])
     train(train_envs, policy, buffer, env_config, training_config)

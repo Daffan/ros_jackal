@@ -177,6 +177,9 @@ class MoveBase():
             self._reset_odom(_create_PoseWithCovarianceStamped())
         except rospy.ServiceException:
             print ("/set_pose service call failed")
+        self.robot_config.X = 0
+        self.robot_config.Y = 0
+        self.robot_config.Z = 0
 
     def clear_costmap(self):
         rospy.wait_for_service('/move_base/clear_costmaps')
