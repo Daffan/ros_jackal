@@ -5,7 +5,7 @@ import numpy as np
 import rospy
 from geometry_msgs.msg import Twist
 
-from envs.dwa_base import DWABase, DWABaseLaser, DWABaseCostmap
+from envs.dwa_base_envs import DWABase, DWABaseLaser, DWABaseCostmap
 
 class MotionControlContinuous(DWABase):
     def __init__(self, **kwargs):

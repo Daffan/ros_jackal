@@ -3,7 +3,7 @@ from gym.spaces import Box
 import numpy as np
 import rospy
 
-from envs.dwa_base import DWABase, DWABaseLaser, DWABaseCostmap
+from envs.dwa_base_envs import DWABase, DWABaseLaser, DWABaseCostmap
 
 # A contant dict that define the ranges of parameters
 RANGE_DICT = {

@@ -15,17 +15,16 @@ from tianshou.utils.net.common import Net
 from tianshou.exploration import GaussianNoise
 from tianshou.utils.net.continuous import Actor, Critic
 from tianshou.data import Collector, ReplayBuffer
+from tianshou.env import DummyVectorEnv
 
 sys.path.append(dirname(dirname(abspath(__file__))))
 from policy import TD3Policy
 from envs import registration
 from offpolicy_trainer import offpolicy_trainer
-from wrapper import DummyVectorEnvSpace
+from collector import Collector as CondorCollector
+from infomation_envs import InfoEnv
 
-def initialize_config(args):
-    config_path = args.config_path
-    save_path = args.save_path
-
+def initialize_config(config_path, save_path):
     # Load the config files
     with open(config_path, 'r') as f:
         config = yaml.load(f, Loader=yaml.FullLoader)
@@ -36,7 +35,7 @@ def initialize_config(args):
     env_config["save_path"] = save_path
     env_config["config_path"] = config_path
 
-    return env_config, training_config
+    return env_config, training_config, condor_config
 
 def initialize_logging(env_config, training_config):
     # Config logging
@@ -44,7 +43,7 @@ def initialize_logging(env_config, training_config):
     dt_string = now.strftime("%Y_%m_%d_%H_%M")
     save_path = join(
         env_config["save_path"], 
-        env_config["env"], 
+        env_config["env_id"], 
         training_config['algorithm'], 
         dt_string
     )
@@ -61,12 +60,14 @@ def initialize_logging(env_config, training_config):
     return save_path, writer
 
 def initialize_envs(env_config):
-    if not env_config["use_container"]:
-        env = gym.make(env_config["env"], **env_config["kwargs"])
-        train_envs = DummyVectorEnvSpace([lambda: env for _ in range(1)])
+    if not env_config["use_condor"]:
+        env = gym.make(env_config["env_id"], **env_config["kwargs"])
+        train_envs = DummyVectorEnv([lambda: env for _ in range(1)])
     else:
-        raise NotImplementedError
-
+        # If use condor, we want to avoid initializing env instance from the central learner
+        # So here we use a fake env with obs_space and act_space information
+        env = InfoEnv(env_config)
+        train_envs = [env]
     return train_envs
 
 def seed(env_config):
@@ -159,7 +160,8 @@ def generate_train_fn(training_config, policy, save_path):
 
 def train(train_envs, policy, buffer, env_config, training_config):
     save_path, writer = initialize_logging(env_config, training_config)
-
+    
+    Collector = CondorCollector if env_config["use_condor"]  # use condor collector if use condor
     train_collector = Collector(policy, train_envs, buffer)
     training_args = training_config["training_args"]
     train_fn = generate_train_fn(training_config, policy, save_path)
@@ -171,18 +173,16 @@ def train(train_envs, policy, buffer, env_config, training_config):
         writer=writer,
         **training_args
     )
-
-    train_envs.close()
+    if env_config["use_condor"]:
+        BASE_PATH = join(os.getenv('HOME'), 'buffer')
+        shutil.rmtree(BASE_PATH, ignore_errors=True)  # a way to force all the actors to stop
+    else:
+        train_envs.close()
 
 if __name__ == "__main__":
-    def parse_args():
-        parser = argparse.ArgumentParser(description = 'ROS-Jackal TD3 training')
-        parser.add_argument('--config', dest = 'config_path', type = str, default = 'td3/config.yaml', help = 'path to the configuration file')
-        parser.add_argument('--save', dest = 'save_path', type = str, default = 'logging/', help = 'path to the saving folder')
-
-        return parser.parse_args()
-
-    env_config, training_config = initialize_config(parse_args())
+    CONFIG_PATH = "td3/config.yaml"
+    SAVE_PATH = "logging/"
+    env_config, training_config = initialize_config(CONFIG_PATH, SAVE_PATH)
     seed(env_config)
     train_envs = initialize_envs(env_config)
     policy, buffer = initialize_policy(training_config, train_envs.env[0])

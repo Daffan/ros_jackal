@@ -25,7 +25,7 @@ def main():
                       "path_distance_bias", 
                       "goal_distance_bias", 
                       "inflation_radius"],
-        world_name='world_0.world',
+        world_name='BARN/world_0.world',
         gui=True,
         init_position=[-2, 2, np.pi/2],
         goal_position=[0, 10, 0]
@@ -62,7 +62,7 @@ def main():
         Y = env.move_base.robot_config.Y
         X = env.move_base.robot_config.X
         p = env.gazebo_sim.get_model_state().pose.position
-        print('current step: %d, X position: %f(world_frame), %f(odem_frame), Y position: %f(world_frame), %f(odem_frame), rew: %f' %(count, p.x, X, p.y, Y , rew))
+        print('current step: %d, X position: %f(world_frame), %f(odem_frame), Y position: %f(world_frame), %f(odom_frame), rew: %f' %(count, p.x, X, p.y, Y , rew))
         print("actions: ", actions)
         # env.visual_costmap(obs)
         if done:

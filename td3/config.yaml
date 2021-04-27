@@ -1,6 +1,6 @@
 env_config:
-  use_container: false
-  env: "dwa_param_continuous_laser-v0"
+  use_condor: false
+  env_id: "dwa_param_continuous_laser-v0"
   seed: 13
   kwargs:
     param_init: [0.5, 1.57, 6, 20, 0.75, 1, 0.3]

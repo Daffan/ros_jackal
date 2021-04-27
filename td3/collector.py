@@ -6,6 +6,7 @@ import time
 import logging
 import re
 import pickle
+import shutil
 
 BASE_PATH = join(os.getenv('HOME'), 'buffer')
 class Collector(object):
@@ -16,7 +17,6 @@ class Collector(object):
         '''
         super().__init__()
         self.policy = policy
-        self.env = env
         self.num_actor = env['condor_config']['num_actor']
         self.ids = list(range(self.num_actor))
         self.ep_count = [0]*self.num_actor
@@ -27,8 +27,10 @@ class Collector(object):
         # save the current policy
         self.update_policy()
         # save the env config the actor should read from
-        with open(join(BASE_PATH, 'config.yaml'), 'w') as fp:
-            yaml.dump(self.env.config, fp)
+        shutil.copyfile(
+            "td3/config.yaml", 
+            join(BASE_PATH, "config.yaml")    
+        )
 
     def update_policy(self):
         torch.save(self.policy.state_dict(), join(BASE_PATH, 'policy.pth'))
@@ -50,6 +52,8 @@ class Collector(object):
         return int(re.split(r'(\d+)', text)[1])
 
     def collect(self, n_step):
+        """ This method searches the buffer folder and collect all the saved trajectories
+        """
         # collect happens after policy is updated
         self.update_policy()
         steps = 0
@@ -63,7 +67,7 @@ class Collector(object):
                 try:
                     traj_files = os.listdir(base)
                 except:
-                    traj_files = [] #["traj_0.pickle"]
+                    traj_files = []
                 for p in traj_files:
                     try:
                         target = join(base, p)

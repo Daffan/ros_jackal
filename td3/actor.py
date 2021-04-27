@@ -89,11 +89,16 @@ def get_world_name(config, id):
         config["condor_config"]["worlds"] *= config["condor_config"]["worlds"] * duplicate_time
     world_name = config["condor_config"]["worlds"][id]
     if isinstance(world_name, int):
-        world_name = "world_%d.world" %(world_name)
+        world_name = "BARN/world_%d.world" %(world_name)
     return world_name
 
-def main(id):
+def _debug_print_robot_status(env, count, rew):
+    Y = env.move_base.robot_config.Y
+    X = env.move_base.robot_config.X
+    p = env.gazebo_sim.get_model_state().pose.position
+    print('current step: %d, X position: %f(world_frame), %f(odem_frame), Y position: %f(world_frame), %f(odom_frame), rew: %f' %(count, p.x, X, p.y, Y , rew))
 
+def main(id):
     config = initialize_actor(id)
     env_config = config['env_config']
     training_config = config["training_config"]
@@ -130,6 +135,8 @@ def main(id):
             traj.append([obs, actions, rew, done, info])
             obs_batch = Batch(obs=[obs_new], info={})
             obs = obs_new
+
+            # _debug_print_robot_status(env, len(traj), rew)
 
         write_buffer(traj, ep, id)
 
