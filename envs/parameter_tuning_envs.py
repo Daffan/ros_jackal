@@ -39,25 +39,6 @@ class DWAParamContinuous(DWABase):
             high=np.array([RANGE_DICT[k][1] for k in self.param_list]),
             dtype=np.float32
         )
-        self.reward_range = (0, 10)
-
-    def _get_done(self):
-        success = self._get_success()
-        done = success or self.step_count >= self.max_step
-        return done
-
-    def _get_success(self):
-        # check the robot distance to the goal position
-        robot_position = np.array([self.move_base.robot_config.X, 
-                                   self.move_base.robot_config.Y]) # robot position in odom frame
-        goal_position = np.array(self.goal_position[:2])
-        self.goal_distance = np.sqrt(np.sum((robot_position - goal_position) ** 2))
-        return self.goal_distance < 0.4
-
-    def _get_reward(self):
-        # we now use +10 for getting the goal, else 0
-        rew = 10 if self._get_success() else 0
-        return rew
 
     def _get_info(self):
         info = dict(success=self._get_success(), params=self.params)

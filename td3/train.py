@@ -20,7 +20,9 @@ from tianshou.env import DummyVectorEnv
 sys.path.append(dirname(dirname(abspath(__file__))))
 from policy import TD3Policy
 from envs import registration
+from envs.wrappers import ShapingRewardWrapper
 from offpolicy_trainer import offpolicy_trainer
+from offpolicy_trainer_condor import offpolicy_trainer_condor
 from collector import Collector as CondorCollector
 from infomation_envs import InfoEnv
 
@@ -29,15 +31,15 @@ def initialize_config(config_path, save_path):
     with open(config_path, 'r') as f:
         config = yaml.load(f, Loader=yaml.FullLoader)
 
-    env_config = config['env_config']
-    training_config = config['training_config']
+    config["env_config"]["save_path"] = save_path
+    config["env_config"]["config_path"] = config_path
 
-    env_config["save_path"] = save_path
-    env_config["config_path"] = config_path
+    return config
 
-    return env_config, training_config, condor_config
+def initialize_logging(config):
+    env_config = config["env_config"]
+    training_config = config["training_config"]
 
-def initialize_logging(env_config, training_config):
     # Config logging
     now = datetime.now()
     dt_string = now.strftime("%Y_%m_%d_%H_%M")
@@ -59,22 +61,29 @@ def initialize_logging(env_config, training_config):
 
     return save_path, writer
 
-def initialize_envs(env_config):
+def initialize_envs(config):
+    env_config = config["env_config"]
+    
     if not env_config["use_condor"]:
         env = gym.make(env_config["env_id"], **env_config["kwargs"])
+        if env_config["shaping_reward"]:
+            env = ShapingRewardWrapper(env)
         train_envs = DummyVectorEnv([lambda: env for _ in range(1)])
     else:
         # If use condor, we want to avoid initializing env instance from the central learner
         # So here we use a fake env with obs_space and act_space information
-        env = InfoEnv(env_config)
-        train_envs = [env]
+        train_envs = InfoEnv(config)
     return train_envs
 
-def seed(env_config):
+def seed(config):
+    env_config = config["env_config"]
+    
     np.random.seed(env_config['seed'])
     torch.manual_seed(env_config['seed'])
 
-def initialize_policy(training_config, env):
+def initialize_policy(config, env):
+    training_config = config["training_config"]
+
     state_shape = env.observation_space.shape
     action_shape = env.action_space.shape
     action_space_low = env.action_space.low
@@ -122,7 +131,7 @@ def initialize_policy(training_config, env):
 
     training_args = training_config["policy_args"]
     exploration_noise = GaussianNoise(
-        sigma=training_config['exploration_noise']
+        sigma=training_config['exploration_noise_start']
     )
     policy = TD3Policy(
         actor, actor_optim, 
@@ -137,16 +146,18 @@ def initialize_policy(training_config, env):
 
     return policy, buffer
 
-def compute_exp_noise(e, start, ratio, epoch):
+def compute_exp_noise(e, start, end, ratio, epoch):
     exp_noise = start * (1. - (e - 1.) / epoch / ratio)
-    return max(0, exp_noise)
+    return max(end, exp_noise)
 
-def generate_train_fn(training_config, policy, save_path):
+def generate_train_fn(config, policy, save_path):
+    training_config = config["training_config"]
     return lambda e: [
         policy.set_exp_noise(
             GaussianNoise(
                 sigma=compute_exp_noise(
-                    e, training_config["exploration_noise"], 
+                    e, training_config["exploration_noise_start"], 
+                    training_config["exploration_noise_end"],
                     training_config["exploration_ratio"], 
                     training_config["training_args"]["max_epoch"]
                 )
@@ -158,15 +169,26 @@ def generate_train_fn(training_config, policy, save_path):
         )
     ]
 
-def train(train_envs, policy, buffer, env_config, training_config):
-    save_path, writer = initialize_logging(env_config, training_config)
-    
-    Collector = CondorCollector if env_config["use_condor"]  # use condor collector if use condor
-    train_collector = Collector(policy, train_envs, buffer)
-    training_args = training_config["training_args"]
-    train_fn = generate_train_fn(training_config, policy, save_path)
+def train(train_envs, policy, buffer, config):
+    env_config = config["env_config"]
+    training_config = config["training_config"]
 
-    result = offpolicy_trainer(
+    save_path, writer = initialize_logging(config)
+    
+    if env_config["use_condor"]:
+        collector = CondorCollector
+        offpolicy_trainer_instance = offpolicy_trainer_condor
+    else:
+        collector = Collector
+        offpolicy_trainer_instance = offpolicy_trainer
+
+    train_collector = collector(policy, train_envs, buffer)
+    training_args = training_config["training_args"]
+    train_fn = generate_train_fn(config, policy, save_path)
+
+    train_collector.collect(n_step=training_config['pre_collect'])
+
+    result = offpolicy_trainer_instance(
         policy, 
         train_collector, 
         train_fn=train_fn, 
@@ -174,7 +196,7 @@ def train(train_envs, policy, buffer, env_config, training_config):
         **training_args
     )
     if env_config["use_condor"]:
-        BASE_PATH = join(os.getenv('HOME'), 'buffer')
+        BASE_PATH = os.getenv('BUFFER_PATH')
         shutil.rmtree(BASE_PATH, ignore_errors=True)  # a way to force all the actors to stop
     else:
         train_envs.close()
@@ -182,8 +204,13 @@ def train(train_envs, policy, buffer, env_config, training_config):
 if __name__ == "__main__":
     CONFIG_PATH = "td3/config.yaml"
     SAVE_PATH = "logging/"
-    env_config, training_config = initialize_config(CONFIG_PATH, SAVE_PATH)
-    seed(env_config)
-    train_envs = initialize_envs(env_config)
-    policy, buffer = initialize_policy(training_config, train_envs.env[0])
-    train(train_envs, policy, buffer, env_config, training_config)
+    config = initialize_config(CONFIG_PATH, SAVE_PATH)
+
+    seed(config)
+
+    train_envs = initialize_envs(config)
+
+    env = train_envs if config["env_config"]["use_condor"] else train_envs.env[0]
+    policy, buffer = initialize_policy(config, env)
+
+    train(train_envs, policy, buffer, config)

@@ -1,7 +1,8 @@
 env_config:
-  use_condor: false
+  use_condor: True
   env_id: "dwa_param_continuous_laser-v0"
   seed: 13
+  shaping_reward: True
   kwargs:
     param_init: [0.5, 1.57, 6, 20, 0.75, 1, 0.3]
     param_list: ["max_vel_x", 
@@ -15,18 +16,24 @@ env_config:
     gui: false
     max_step: 100
     time_step: 1
+    laser_clip: 2
+    slack_reward: -1
+    failure_reward: -50
+    success_reward: 0
     init_position: [-2, 2, 1.57]
     goal_position: [0, 10, 0]
 
 training_config:
   algorithm: "TD3"
-  buffer_size: 20000
+  buffer_size: 200000
   actor_lr: 0.0005
   critic_lr: 0.001
   num_layers: 2
   hidden_size: 512
-  exploration_noise: 0.5
+  exploration_noise_start: 0.5
+  exploration_noise_end: 0.1
   exploration_ratio: 1
+  pre_collect: 10000
 
   policy_args:
     tau: 0.005
@@ -34,17 +41,17 @@ training_config:
     policy_noise: 0.2
     update_actor_freq: 2
     noise_clip: 0.5
-    reward_normalization: false
+    reward_normalization: true
     ignore_done: false
-    estimation_step: 5
+    estimation_step: 4
 
   training_args:
-    max_epoch: 5
-    step_per_epoch: 500
-    collect_per_step: 1
-    update_per_step: 10
+    max_epoch: 10
+    step_per_epoch: 1000
+    collect_per_step: 10
+    update_per_step: 1
     batch_size: 128
 
 condor_config:
-  num_actor: 10
-  worlds: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+  num_actor: 50
+  worlds: [0]

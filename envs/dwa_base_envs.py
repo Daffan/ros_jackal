@@ -22,6 +22,9 @@ class DWABase(gym.Env):
         goal_position=[4, 0, 0],
         max_step=100,
         time_step=1,
+        slack_reward=-1,
+        failure_reward=-50,
+        success_reward=0,
         verbose=True
     ):
         """Base RL env that initialize jackal simulation in Gazebo
@@ -35,6 +38,9 @@ class DWABase(gym.Env):
         self.verbose = verbose
         self.time_step = time_step
         self.max_step = max_step
+        self.slack_reward = slack_reward
+        self.failure_reward = failure_reward
+        self.success_reward = success_reward
 
         # launch gazebo and dwa demo
         rospy.logwarn(">>>>>>>>>>>>>>>>>> Load world: %s <<<<<<<<<<<<<<<<<<" %(world_name))
@@ -62,12 +68,14 @@ class DWABase(gym.Env):
         # Not implemented
         self.action_space = None
         self.observation_space = None
-        self.reward_range = None
+        self.reward_range = (
+            min(slack_reward, failure_reward), 
+            success_reward
+        )
 
         self.step_count = 0
 
     def seed(self, seed):
-        # TODO: make sure numpy is the only module that need to be seeded
         np.random.seed(seed)
 
     def reset(self):
@@ -106,11 +114,26 @@ class DWABase(gym.Env):
     def _get_observation(self):
         raise NotImplementedError()
 
+    def _get_success(self):
+        # check the robot distance to the goal position
+        robot_position = np.array([self.move_base.robot_config.X, 
+                                   self.move_base.robot_config.Y]) # robot position in odom frame
+        goal_position = np.array(self.goal_position[:2])
+        self.goal_distance = np.sqrt(np.sum((robot_position - goal_position) ** 2))
+        return self.goal_distance < 0.4
+
     def _get_reward(self):
-        raise NotImplementedError()
+        rew = self.slack_reward
+        if self.step_count >= self.max_step:
+            rew = self.failure_reward
+        if self._get_success():
+            rew = self.success_reward
+        return rew
 
     def _get_done(self):
-        raise NotImplementedError()
+        success = self._get_success()
+        done = success or self.step_count >= self.max_step
+        return done
 
     def _get_info(self):
         return dict(world=self.world_name)

@@ -8,6 +8,8 @@
 import subprocess
 import yaml
 import os
+import time
+import uuid
 
 # Load condor config
 CONFIG_PATH = "td3/config.yaml"
@@ -15,9 +17,47 @@ with open(CONFIG_PATH, 'r') as f:
     config = yaml.load(f, Loader=yaml.FullLoader)
 num_actor = config["condor_config"]["num_actor"]
 
-if not os.path.exists('out'):
-    os.mkdir('out')
+hash_code = uuid.uuid4().hex
+buffer_path = os.path.join(os.environ['HOME'], hash_code)
+os.environ['BUFFER_PATH'] = buffer_path
 
+if not os.path.exists(buffer_path):
+    os.mkdir(buffer_path)
+
+out_path = "out"
+out_path = os.path.join(os.environ['BUFFER_PATH'], out_path)
+print("Find the logging under path: %s" %(out_path))
+if not os.path.exists(out_path):
+    os.mkdir(out_path)
+
+# Central learner submission
+cfile = open('central_learner.sub', 'w')
+s = 'executable/run_central_learner.sh'
+common_command = "\
+    requirements       = InMastodon \n\
+    +Group              = \"GRAD\" \n\
+    +Project            = \"AI_ROBOTICS\" \n\
+    +ProjectDescription = \"Adaptive Planner Parameter Learning From Reinforcement\" \n\
+    Executable          = %s \n\
+    Universe            = vanilla\n\
+    getenv              = true\n\
+    transfer_executable = false \n\n" %(s)
+cfile.write(common_command)
+
+run_command = "\
+    output     = %s/out.txt\n\
+    log        = %s/log.txt\n\
+    error      = %s/err.txt\n\
+    queue 1\n\n" % (out_path, out_path, out_path)
+cfile.write(run_command)
+
+cfile.close()
+
+subprocess.run(["condor_submit", "central_learner.sub"])
+
+time.sleep(60)  # wait for central learner to be initialized 
+
+# Actor submission
 cfile = open('actors.sub', 'w')
 s = 'executable/actor.sh'
 common_command = "\
@@ -31,16 +71,14 @@ common_command = "\
     transfer_executable = false \n\n" %(s)
 cfile.write(common_command)
 
-# Loop over various values of an argument and create different output file for each
-# Then put them in the queue
-s = "out"
+# Add actor arguments
 for a in range(num_actor):
     run_command = "\
         arguments  = %d\n\
         output     = %s/out_%d.txt\n\
         log        = %s/log_%d.txt\n\
         error      = %s/err_%d.txt\n\
-        queue 1\n\n" % (a, s, a, s, a, s, a)
+        queue 1\n\n" % (a, out_path, a, out_path, a, out_path, a)
     cfile.write(run_command)
 cfile.close()
 

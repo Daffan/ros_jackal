@@ -8,7 +8,7 @@ import re
 import pickle
 import shutil
 
-BASE_PATH = join(os.getenv('HOME'), 'buffer')
+BASE_PATH = os.getenv('BUFFER_PATH')
 class Collector(object):
 
     def __init__(self, policy, env, replaybuffer):
@@ -17,7 +17,7 @@ class Collector(object):
         '''
         super().__init__()
         self.policy = policy
-        self.num_actor = env['condor_config']['num_actor']
+        self.num_actor = env.config['condor_config']['num_actor']
         self.ids = list(range(self.num_actor))
         self.ep_count = [0]*self.num_actor
         self.buffer = replaybuffer
@@ -59,7 +59,7 @@ class Collector(object):
         steps = 0
         ep_rew = []
         ep_len = []
-        succeed = []
+        success = []
         world = []
         while steps < n_step:
             for id in self.ids:
@@ -76,7 +76,7 @@ class Collector(object):
                                 traj = pickle.load(f)
                                 ep_rew.append(sum([t[2] for t in traj]))
                                 ep_len.append(len(traj))
-                                succeed.append(int(traj[-1][-1]['success']))
+                                success.append(float(traj[-1][-1]['success']))
                                 world.append(traj[-1][-1]['world'])
                                 self.buffer_expand(traj)
                                 steps += len(traj)
@@ -86,5 +86,5 @@ class Collector(object):
                         print("failed to load actor_%s:%s" %(id, p))
                         os.remove(join(base, p))
                         pass
-        return {'n/st': steps, 'n/stt': steps, 'ep_rew': ep_rew, 'ep_len': ep_len, 'success': succeed, 'world': world}
+        return {'n/st': steps, 'n/stt': steps, 'ep_rew': ep_rew, 'ep_len': ep_len, 'success': success, 'world': world}
 

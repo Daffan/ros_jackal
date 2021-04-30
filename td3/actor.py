@@ -18,10 +18,11 @@ from tianshou.data import Batch
 from policy import TD3Policy, SACPolicy
 from train import initialize_envs, initialize_policy
 from envs import registration
+from envs.wrappers import ShapingRewardWrapper
 
 random.seed(43)
 
-BASE_PATH = join(os.getenv('HOME'), 'buffer')
+BASE_PATH = os.getenv('BUFFER_PATH')
 
 def initialize_actor(id):
     rospy.logwarn(">>>>>>>>>>>>>>>>>> actor id: %s <<<<<<<<<<<<<<<<<<" %(str(id)))
@@ -85,8 +86,8 @@ def write_buffer(traj, ep, id):
 
 def get_world_name(config, id):
     if len(config["condor_config"]["worlds"]) < config["condor_config"]["num_actor"]:
-        duplicate_time = config["condor_config"]["num_actor"] // config["condor_config"]["worlds"] + 1
-        config["condor_config"]["worlds"] *= config["condor_config"]["worlds"] * duplicate_time
+        duplicate_time = config["condor_config"]["num_actor"] // len(config["condor_config"]["worlds"]) + 1
+        config["condor_config"]["worlds"] = config["condor_config"]["worlds"] * duplicate_time
     world_name = config["condor_config"]["worlds"][id]
     if isinstance(world_name, int):
         world_name = "BARN/world_%d.world" %(world_name)
@@ -101,12 +102,13 @@ def _debug_print_robot_status(env, count, rew):
 def main(id):
     config = initialize_actor(id)
     env_config = config['env_config']
-    training_config = config["training_config"]
     world_name = get_world_name(config, id)
     env_config["kwargs"]["world_name"] = world_name
-    env = gym.make(env_config["env"], **env_config["kwargs"])
+    env = gym.make(env_config["env_id"], **env_config["kwargs"])
+    if env_config["shaping_reward"]:
+        env = ShapingRewardWrapper(env)
 
-    policy, _ = initialize_policy(training_config, env)
+    policy, _ = initialize_policy(config, env)
 
     print(">>>>>>>>>>>>>> Running on %s <<<<<<<<<<<<<<<<" %(world_name))
     ep = 0

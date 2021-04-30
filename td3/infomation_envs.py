@@ -1,14 +1,16 @@
-from typing import NamedTuple, Union, Optional
 from gym.spaces import Discrete, Box
+import numpy as np
+
+import sys
+from os.path import dirname, abspath
 sys.path.append(dirname(dirname(abspath(__file__))))
 from envs.parameter_tuning_envs import RANGE_DICT
 
-class InfoEnv(NamedTuple):
+class InfoEnv:
     """ The infomation environment contains observation space and action space infomation only
     """
-    observation_space: Union[Discrete, Box]
-    action_space: Union[Discrete, Box]
-    def __init__(self, env_config):
+    def __init__(self, config):
+        env_config = config["env_config"]
         env_id = env_config["env_id"]
         if env_id.startswith("dwa_param_continuous"):
             action_space = Box(
@@ -25,14 +27,14 @@ class InfoEnv(NamedTuple):
         else:
             raise NotImplementedError
         
-        if env_id.endswith("laser"):
+        if "laser" in env_id:
             observation_space = Box(
                 low=0,
-                high=laser_clip,
+                high=env_config["kwargs"]["laser_clip"],
                 shape=(721,),
                 dtype=np.float32
             )
-        elif env_id.endswith("costmap"):
+        elif "costmap" in env_id:
             observation_space = Box(
                 low=-1,
                 high=10,
@@ -42,7 +44,6 @@ class InfoEnv(NamedTuple):
         else:
             raise NotImplementedError
 
-        super().__init__(
-            observation_space=observation_space,
-            action_space=action_space
-        )
+        self.observation_space = observation_space
+        self.action_space = action_space
+        self.config = config
