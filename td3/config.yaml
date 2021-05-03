@@ -34,7 +34,7 @@ training_config:
   exploration_noise_start: 0.5
   exploration_noise_end: 0.1
   exploration_ratio: 1
-  pre_collect: 10000
+  pre_collect: 0
 
   policy_args:
     tau: 0.005

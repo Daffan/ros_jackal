@@ -46,7 +46,7 @@ class Collector(object):
             obs_next = traj[i+1][0] if i < len(traj)-1 else traj[i][0]
             self.buffer.add(traj[i][0], traj[i][1], \
                             traj[i][2], traj[i][3], \
-                            obs_next, traj[i][4])
+                            obs_next, {"1":1})
     
     def natural_keys(self, text):
         return int(re.split(r'(\d+)', text)[1])

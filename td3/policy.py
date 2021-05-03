@@ -67,17 +67,18 @@ class DDPGPolicy(BasePolicy):
         self._gamma = gamma
         self._noise = exploration_noise
         self._range = action_range
-        self._action_bias = torch.tensor((action_range[0] + action_range[1]) / 2.0)
         # self._action_bias = (action_range[0] + action_range[1]) / 2.0
         # force policy to center at init parameters
         # self._action_bias = torch.tensor(np.array([0.5, 1.57, 6, 20, 0.75, 1, 0.3]))
-        self._action_scale = torch.tensor((action_range[1] - action_range[0]) / 2.0)
         # it is only a little difference to use GaussianNoise
         # self.noise = OUNoise()
         self._rm_done = ignore_done
         self._rew_norm = reward_normalization
         assert estimation_step > 0, "estimation_step should be greater than 0"
         self._n_step = estimation_step
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self._action_scale = torch.tensor((action_range[1] - action_range[0]) / 2.0, device=self.device)
+        self._action_bias = torch.tensor((action_range[0] + action_range[1]) / 2.0, device=self.device)
 
     def set_exp_noise(self, noise: Optional[BaseNoise]) -> None:
         """Set the exploration noise."""
@@ -102,7 +103,8 @@ class DDPGPolicy(BasePolicy):
     def _target_q(
         self, buffer: ReplayBuffer, indice: np.ndarray
     ) -> torch.Tensor:
-        batch = buffer[indice]  # batch.obs_next: s_{t+n}
+        batch = buffer[indice]
+        batch.to_torch(dtype=torch.float32, device=self.device)  # batch.obs_next: s_{t+n}
         with torch.no_grad():
             target_q = self.critic_old(
                 batch.obs_next,
@@ -260,7 +262,8 @@ class TD3Policy(DDPGPolicy):
     def _target_q(
         self, buffer: ReplayBuffer, indice: np.ndarray
     ) -> torch.Tensor:
-        batch = buffer[indice]  # batch.obs: s_{t+n}
+        batch = buffer[indice]
+        batch.to_torch(dtype=torch.float32, device=self.device)  # batch.obs: s_{t+n}
         with torch.no_grad():
             a_ = self(batch, model="actor_old", input="obs_next").act
             dev = a_.device
@@ -434,7 +437,8 @@ class SACPolicy(DDPGPolicy):
     def _target_q(
         self, buffer: ReplayBuffer, indice: np.ndarray
     ) -> torch.Tensor:
-        batch = buffer[indice]  # batch.obs: s_{t+n}
+        batch = buffer[indice]
+        batch.to_torch(dtype=torch.float32, device=self.device)  # batch.obs: s_{t+n}
         with torch.no_grad():
             obs_next_result = self(batch, input='obs_next')
             a_ = obs_next_result.act

@@ -11,6 +11,7 @@ import random
 import time
 import rospy
 import argparse
+import logging
 
 from tianshou.exploration import GaussianNoise
 from tianshou.data import Batch
@@ -49,7 +50,7 @@ def load_model(model):
     count = 0
     while (state_dict_raw is None) and count < 10:
         try:
-            state_dict_raw = torch.load(model_path)
+            state_dict_raw = torch.load(model_path, map_location=torch.device('cpu'))
         except:
             time.sleep(2)
             pass
@@ -57,7 +58,7 @@ def load_model(model):
         count += 1
 
     if state_dict_raw is None:
-        raise FileNotFoundError("critic not initialized")
+        raise FileNotFoundError("critic not initialized at %s" %(BUFFER_PATH))
 
     model.load_state_dict(state_dict_raw)
     model = model.float()
@@ -74,7 +75,7 @@ def load_model(model):
             count += 1
 
     if eps is None:
-        raise FileNotFoundError("critic not initialized")
+        raise FileNotFoundError("critic not initialized at %s" % BUFFER_PATH)
 
     return model, eps 
 

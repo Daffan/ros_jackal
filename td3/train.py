@@ -50,7 +50,7 @@ def initialize_logging(config):
         training_config['algorithm'], 
         dt_string
     )
-
+    print("    >>>> Saving to %s" % save_path)
     if not exists(save_path):
         os.makedirs(save_path)
     writer = SummaryWriter(save_path)
@@ -73,6 +73,7 @@ def initialize_envs(config):
     else:
         # If use condor, we want to avoid initializing env instance from the central learner
         # So here we use a fake env with obs_space and act_space information
+        print("    >>>> Using actors on Condor")
         train_envs = InfoEnv(config)
     return train_envs
 
@@ -109,7 +110,7 @@ def initialize_policy(config, env):
         actor_net, action_shape,
         1, device, 
         hidden_layer_size=training_config['hidden_size']
-    )
+    ).to(device)
     actor_optim = torch.optim.Adam(
         actor.parameters(), 
         lr=training_config['actor_lr'])
@@ -188,7 +189,7 @@ def train(train_envs, policy, buffer, config):
     train_collector = collector(policy, train_envs, buffer)
     training_args = training_config["training_args"]
     train_fn = generate_train_fn(config, policy, save_path)
-
+    print("    >>>> Pre-collect experience")
     train_collector.collect(n_step=training_config['pre_collect'])
 
     result = offpolicy_trainer_instance(
@@ -207,13 +208,15 @@ def train(train_envs, policy, buffer, config):
 if __name__ == "__main__":
     CONFIG_PATH = "td3/config.yaml"
     SAVE_PATH = "logging/"
+    print(">>>>>>>> Loading the configuration from %s" % CONFIG_PATH)
     config = initialize_config(CONFIG_PATH, SAVE_PATH)
 
     seed(config)
-
+    print(">>>>>>>> Creating the environments")
     train_envs = initialize_envs(config)
-
     env = train_envs if config["env_config"]["use_condor"] else train_envs.env[0]
+    
+    print(">>>>>>>> Initializing the policy")
     policy, buffer = initialize_policy(config, env)
-
+    print(">>>>>>>> Start training")
     train(train_envs, policy, buffer, config)
