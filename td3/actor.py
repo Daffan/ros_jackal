@@ -20,14 +20,12 @@ from train import initialize_envs, initialize_policy
 from envs import registration
 from envs.wrappers import ShapingRewardWrapper
 
-random.seed(43)
-
-BASE_PATH = os.getenv('BUFFER_PATH')
+BUFFER_PATH = os.getenv('BUFFER_PATH')
 
 def initialize_actor(id):
     rospy.logwarn(">>>>>>>>>>>>>>>>>> actor id: %s <<<<<<<<<<<<<<<<<<" %(str(id)))
-    assert os.path.exists(BASE_PATH)
-    actor_path = join(BASE_PATH, 'actor_%s' %(str(id)))
+    assert os.path.exists(BUFFER_PATH)
+    actor_path = join(BUFFER_PATH, 'actor_%s' %(str(id)))
 
     if not exists(actor_path):
         os.mkdir(actor_path) # path to store all the trajectories
@@ -35,7 +33,7 @@ def initialize_actor(id):
     f = None
     while f is None:
         try:
-            f = open(join(BASE_PATH, 'config.yaml'), 'r')
+            f = open(join(BUFFER_PATH, 'config.yaml'), 'r')
         except:
             rospy.logwarn("wait for critor to be initialized")
             time.sleep(2)
@@ -45,7 +43,7 @@ def initialize_actor(id):
     return config
 
 def load_model(model):
-    model_path = join(BASE_PATH, 'policy.pth')
+    model_path = join(BUFFER_PATH, 'policy.pth')
     state_dict = {}
     state_dict_raw = None
     count = 0
@@ -64,7 +62,7 @@ def load_model(model):
     model.load_state_dict(state_dict_raw)
     model = model.float()
     # exploration noise std
-    with open(join(BASE_PATH, 'eps.txt'), 'r') as f:
+    with open(join(BUFFER_PATH, 'eps.txt'), 'r') as f:
         eps = None
         count = 0
         while (eps is None) and count < 10:
@@ -81,7 +79,7 @@ def load_model(model):
     return model, eps 
 
 def write_buffer(traj, ep, id):
-    with open(join(BASE_PATH, 'actor_%s' %(str(id)), 'traj_%d.pickle' %(ep)), 'wb') as f:
+    with open(join(BUFFER_PATH, 'actor_%s' %(str(id)), 'traj_%d.pickle' %(ep)), 'wb') as f:
         pickle.dump(traj, f)
 
 def get_world_name(config, id):
@@ -124,7 +122,6 @@ def main(id):
         except:
             pass
         while not done:
-            time.sleep(0.01)
             p = random.random()
             obs = torch.tensor([obs]).float()
             if isinstance(policy._noise, GaussianNoise) or p > eps:

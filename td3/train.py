@@ -11,7 +11,7 @@ import shutil
 import torch
 from tensorboardX import SummaryWriter
 
-from tianshou.utils.net.common import Net
+from tianshou.utils.net.common import Net as MLP
 from tianshou.exploration import GaussianNoise
 from tianshou.utils.net.continuous import Actor, Critic
 from tianshou.data import Collector, ReplayBuffer
@@ -25,6 +25,7 @@ from offpolicy_trainer import offpolicy_trainer
 from offpolicy_trainer_condor import offpolicy_trainer_condor
 from collector import Collector as CondorCollector
 from infomation_envs import InfoEnv
+from model import CNN
 
 def initialize_config(config_path, save_path):
     # Load the config files
@@ -90,13 +91,22 @@ def initialize_policy(config, env):
     action_space_high = env.action_space.high
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-    net = Net(
-        training_config['num_layers'],
-        state_shape, device=device,
-        hidden_layer_size=training_config['hidden_size']
-    )
+    if training_config["network"] == "mlp":
+        make_net = lambda act_shape: MLP(
+            training_config['num_layers'],
+            state_shape, 
+            act_shape, 
+            concat=True if act_shape != 0 else False,
+            device=device,
+            hidden_layer_size=training_config['hidden_size']
+        )
+    elif training_config["network"] == "cnn":
+        make_net =  lambda : CNN()
+    else:
+        raise NotImplementedError
+    actor_net = make_net(0)
     actor = Actor(
-        net, action_shape,
+        actor_net, action_shape,
         1, device, 
         hidden_layer_size=training_config['hidden_size']
     )
@@ -104,16 +114,9 @@ def initialize_policy(config, env):
         actor.parameters(), 
         lr=training_config['actor_lr'])
 
-    net = Net(
-        training_config['num_layers'], 
-        state_shape,
-        action_shape, 
-        concat=True, 
-        device=device, 
-        hidden_layer_size=training_config['hidden_size']
-    )
+    critic_net = make_net(action_shape)
     critic1 = Critic(
-        net, device, 
+        critic_net, device, 
         hidden_layer_size=training_config['hidden_size']
     ).to(device)
     critic1_optim = torch.optim.Adam(
@@ -121,7 +124,7 @@ def initialize_policy(config, env):
         lr=training_config['critic_lr']
     )
     critic2 = Critic(
-        net, device, 
+        critic_net, device, 
         hidden_layer_size=training_config['hidden_size']
     ).to(device)
     critic2_optim = torch.optim.Adam(

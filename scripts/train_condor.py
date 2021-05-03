@@ -31,7 +31,8 @@ if not os.path.exists(out_path):
     os.mkdir(out_path)
 
 # Central learner submission
-cfile = open('central_learner.sub', 'w')
+submission_file = os.path.join(buffer_path, 'central_learner.sub')
+cfile = open(submission_file, 'w')
 s = 'executable/run_central_learner.sh'
 common_command = "\
     requirements       = InMastodon \n\
@@ -53,12 +54,13 @@ cfile.write(run_command)
 
 cfile.close()
 
-subprocess.run(["condor_submit", "central_learner.sub"])
+subprocess.run(["condor_submit", submission_file])
 
 time.sleep(60)  # wait for central learner to be initialized 
 
 # Actor submission
-cfile = open('actors.sub', 'w')
+submission_file = os.path.join(buffer_path, 'actors.sub')
+cfile = open(submission_file, 'w')
 s = 'executable/actor.sh'
 common_command = "\
     requirements       = InMastodon \n\
@@ -82,4 +84,4 @@ for a in range(num_actor):
     cfile.write(run_command)
 cfile.close()
 
-subprocess.run(["condor_submit", "actors.sub"])
+subprocess.run(["condor_submit", submission_file])
