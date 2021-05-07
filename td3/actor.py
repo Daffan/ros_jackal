@@ -86,8 +86,12 @@ def write_buffer(traj, ep, id):
 def get_world_name(config, id):
     if len(config["condor_config"]["worlds"]) < config["condor_config"]["num_actor"]:
         duplicate_time = config["condor_config"]["num_actor"] // len(config["condor_config"]["worlds"]) + 1
-        config["condor_config"]["worlds"] = config["condor_config"]["worlds"] * duplicate_time
-    world_name = config["condor_config"]["worlds"][id]
+        worlds = config["condor_config"]["worlds"] * duplicate_time
+    else:
+        worlds = config["condor_config"]["worlds"].copy()
+        random.shuffle(worlds)
+        worlds = worlds[:config["condor_config"]["num_actor"]]
+    world_name = worlds[id]
     if isinstance(world_name, int):
         world_name = "BARN/world_%d.world" %(world_name)
     return world_name
