@@ -13,7 +13,7 @@ from tensorboardX import SummaryWriter
 
 from tianshou.utils.net.common import Net as MLP
 from tianshou.exploration import GaussianNoise
-from tianshou.utils.net.continuous import Actor, Critic
+from tianshou.utils.net.continuous import Actor
 from tianshou.data import Collector, ReplayBuffer
 from tianshou.env import DummyVectorEnv
 
@@ -25,7 +25,7 @@ from offpolicy_trainer import offpolicy_trainer
 from offpolicy_trainer_condor import offpolicy_trainer_condor
 from collector import Collector as CondorCollector
 from infomation_envs import InfoEnv
-from model import CNN
+from model import CNN, Critic  # comtumized Critic to cover the the CNN case
 
 def initialize_config(config_path, save_path):
     # Load the config files
@@ -102,22 +102,27 @@ def initialize_policy(config, env):
             hidden_layer_size=training_config['hidden_size']
         )
     elif training_config["network"] == "cnn":
-        make_net =  lambda : CNN()
+        make_net =  lambda act_shape: CNN(action_shape=act_shape)
     else:
         raise NotImplementedError
     actor_net = make_net(0)
     actor = Actor(
-        actor_net, action_shape,
-        1, device, 
+        actor_net,
+        action_shape,
+        max_action=1, 
+        device=device, 
         hidden_layer_size=training_config['hidden_size']
     ).to(device)
     actor_optim = torch.optim.Adam(
         actor.parameters(), 
-        lr=training_config['actor_lr'])
+        lr=training_config['actor_lr']
+    )
 
     critic_net = make_net(action_shape)
     critic1 = Critic(
-        critic_net, device, 
+        critic_net, 
+        device=device,
+        network=training_config["network"],
         hidden_layer_size=training_config['hidden_size']
     ).to(device)
     critic1_optim = torch.optim.Adam(
@@ -125,7 +130,9 @@ def initialize_policy(config, env):
         lr=training_config['critic_lr']
     )
     critic2 = Critic(
-        critic_net, device, 
+        critic_net,
+        device=device,
+        network=training_config["network"],
         hidden_layer_size=training_config['hidden_size']
     ).to(device)
     critic2_optim = torch.optim.Adam(
@@ -206,7 +213,7 @@ def train(train_envs, policy, buffer, config):
         train_envs.close()
 
 if __name__ == "__main__":
-    CONFIG_PATH = "td3/config.yaml"
+    CONFIG_PATH = "configs/config.yaml"
     SAVE_PATH = "logging/"
     print(">>>>>>>> Loading the configuration from %s" % CONFIG_PATH)
     config = initialize_config(CONFIG_PATH, SAVE_PATH)

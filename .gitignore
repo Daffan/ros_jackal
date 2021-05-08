@@ -4,3 +4,4 @@
 logging
 out
 **.sub
+configs/config.yaml

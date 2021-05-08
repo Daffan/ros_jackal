@@ -28,7 +28,7 @@ class Collector(object):
         self.update_policy()
         # save the env config the actor should read from
         shutil.copyfile(
-            "td3/config.yaml", 
+            "configs/config.yaml", 
             join(BASE_PATH, "config.yaml")    
         )
 
