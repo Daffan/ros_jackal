@@ -104,7 +104,7 @@ class DDPGPolicy(BasePolicy):
         self, buffer: ReplayBuffer, indice: np.ndarray
     ) -> torch.Tensor:
         batch = buffer[indice]
-        batch.to_torch(dtype=torch.float32, device=self.device)  # batch.obs_next: s_{t+n}
+        # batch.to_torch(dtype=torch.float32, device=self.device)  # batch.obs_next: s_{t+n}
         with torch.no_grad():
             target_q = self.critic_old(
                 batch.obs_next,
@@ -263,7 +263,7 @@ class TD3Policy(DDPGPolicy):
         self, buffer: ReplayBuffer, indice: np.ndarray
     ) -> torch.Tensor:
         batch = buffer[indice]
-        batch.to_torch(dtype=torch.float32, device=self.device)  # batch.obs: s_{t+n}
+        # batch.to_torch(dtype=torch.float32, device=self.device)  # batch.obs: s_{t+n}
         with torch.no_grad():
             a_ = self(batch, model="actor_old", input="obs_next").act
             dev = a_.device
@@ -438,7 +438,7 @@ class SACPolicy(DDPGPolicy):
         self, buffer: ReplayBuffer, indice: np.ndarray
     ) -> torch.Tensor:
         batch = buffer[indice]
-        batch.to_torch(dtype=torch.float32, device=self.device)  # batch.obs: s_{t+n}
+        # batch.to_torch(dtype=torch.float32, device=self.device)  # batch.obs: s_{t+n}
         with torch.no_grad():
             obs_next_result = self(batch, input='obs_next')
             a_ = obs_next_result.act

@@ -102,7 +102,10 @@ def initialize_policy(config, env):
             hidden_layer_size=training_config['hidden_size']
         )
     elif training_config["network"] == "cnn":
-        make_net =  lambda act_shape: CNN(action_shape=act_shape)
+        make_net =  lambda act_shape: CNN(
+            action_shape=act_shape,
+            device=device
+        )
     else:
         raise NotImplementedError
     actor_net = make_net(0)

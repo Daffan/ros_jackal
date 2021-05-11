@@ -17,7 +17,7 @@ parser.add_argument('--local_update', dest='local_update', action="store_true")
 args = parser.parse_args()
 
 # Load condor config
-CONFIG_PATH = "td3/config.yaml"
+CONFIG_PATH = "configs/config.yaml"
 with open(CONFIG_PATH, 'r') as f:
     config = yaml.load(f, Loader=yaml.FullLoader)
 num_actor = config["condor_config"]["num_actor"]

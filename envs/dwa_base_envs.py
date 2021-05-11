@@ -231,14 +231,20 @@ class DWABaseCostmap(DWABase):
     def _get_costmap(self):
         costmap = self.move_base.get_costmap().data
         costmap = np.array(costmap, dtype="uint8").reshape(1, 800, 800)
+        # padding to prevent out of index
+        occupancy_grid = np.zeros((1, 884, 884), dtype="uint8")
+        occupancy_grid[:, 42:842, 42:842] = costmap
         
         x, y = self.move_base.robot_config.X, self.move_base.robot_config.Y
-        X, Y = int(x*20) + 400, int(y*20) + 400
-        costmap = costmap[:, Y - 42:Y + 42, X - 42:X + 42]
-        costmap[np.where(costmap < 100)] = 0
-        costmap[np.where(costmap != 0)] = 1
+        X, Y = int(x*20) + 442, int(y*20) + 442
+        X, Y = min(841, X), min(841, Y)
+        X, Y = max(42, X), max(42, Y)
+        occupancy_grid = occupancy_grid[:, Y - 42:Y + 42, X - 42:X + 42]
+        occupancy_grid[np.where(occupancy_grid < 100)] = 0
+        occupancy_grid[np.where(occupancy_grid != 0)] = 1
+        assert occupancy_grid.shape == (1, 84, 84), "x, y, z: %d, %d, %d; X, Y: %d, %d" %(occupancy_grid.shape[0], occupancy_grid.shape[1], occupancy_grid.shape[2], X, Y)
         
-        return costmap
+        return occupancy_grid
 
     def _get_observation(self):
         # observation is the 720 dim laser scan + one local goal in angle

@@ -33,7 +33,13 @@ class Collector(object):
         )
 
     def update_policy(self):
-        torch.save(self.policy.state_dict(), join(BASE_PATH, 'policy.pth'))
+        # torch.save(self.policy.state_dict(), join(BASE_PATH, 'policy_copy.pth'))
+        device = self.policy.device
+        self.policy.to("cpu")
+        with open(join(BASE_PATH, "policy_copy.pth"), "wb") as f:
+            pickle.dump(self.policy.state_dict(), f)
+        shutil.move(join(BASE_PATH, 'policy_copy.pth'), join(BASE_PATH, 'policy.pth'))
+        self.policy.to(device)
         with open(join(BASE_PATH, 'eps.txt'), 'w') as f:
             try:
                 std = self.policy._noise._sigma
@@ -62,6 +68,7 @@ class Collector(object):
         success = []
         world = []
         while steps < n_step:
+            time.sleep(1)
             for id in self.ids:
                 base = join(BASE_PATH, 'actor_%d' %(id))
                 try:

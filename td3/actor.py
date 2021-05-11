@@ -45,17 +45,20 @@ def initialize_actor(id):
 
 def load_model(model):
     model_path = join(BUFFER_PATH, 'policy.pth')
-    state_dict = {}
     state_dict_raw = None
-    count = 0
-    while (state_dict_raw is None) and count < 10:
+    while (state_dict_raw is None):
         try:
-            state_dict_raw = torch.load(model_path, map_location=torch.device('cpu'))
-        except:
-            time.sleep(2)
+            if not os.path.exists(join(BUFFER_PATH, "policy_copy.pth")):
+                with open(join(BUFFER_PATH, "policy.pth"), "rb") as f:
+                    # state_dict_raw = torch.load(model_path, map_location=torch.device('cpu'))
+                    state_dict_raw = pickle.load(f)
+        except FileNotFoundError:
+            time.sleep(4)
             pass
-        time.sleep(2)
-        count += 1
+        except:
+            logging.exception('')
+            pass
+        time.sleep(1)
 
     if state_dict_raw is None:
         raise FileNotFoundError("critic not initialized at %s" %(BUFFER_PATH))
@@ -81,7 +84,11 @@ def load_model(model):
 
 def write_buffer(traj, ep, id):
     with open(join(BUFFER_PATH, 'actor_%s' %(str(id)), 'traj_%d.pickle' %(ep)), 'wb') as f:
-        pickle.dump(traj, f)
+        try:
+            pickle.dump(traj, f)
+        except OSError as e:
+            logging.exception('Failed to dump the trajectory! %s', e)
+            pass
 
 def get_world_name(config, id):
     if len(config["condor_config"]["worlds"]) < config["condor_config"]["num_actor"]:

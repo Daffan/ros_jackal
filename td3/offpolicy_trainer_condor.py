@@ -56,7 +56,7 @@ def offpolicy_trainer_condor(
     def int_to_BARN_world(w):
         return "BARN/world_%d.world" %(w)
 
-    with open("td3/config.yaml", "r") as f:
+    with open("configs/config.yaml", "r") as f:
         config = yaml.load(f, Loader=yaml.FullLoader)
     worlds = [int_to_BARN_world(w) if isinstance(w, int) else w for w in config["condor_config"]["worlds"]]
 
@@ -91,7 +91,7 @@ def offpolicy_trainer_condor(
                     w = worlds.index(world) 
                     if world_count[w] // 100 > world_pcount[w] // 100:  # log per 100 episode 
                         for k in world_results[w][0].keys():
-                            writer.add_scalar('%s' %(world) + k,
+                            writer.add_scalar('%s' %(world) + "/" + k,
                                               np.mean([r[k] for r in world_results[w]]),
                                               global_step=world_count[w])
                 n_ep = len(result["success"])
