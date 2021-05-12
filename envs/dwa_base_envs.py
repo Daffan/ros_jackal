@@ -235,16 +235,30 @@ class DWABaseCostmap(DWABase):
         occupancy_grid = np.zeros((1, 884, 884), dtype="uint8")
         occupancy_grid[:, 42:842, 42:842] = costmap
         
-        x, y = self.move_base.robot_config.X, self.move_base.robot_config.Y
-        X, Y = int(x*20) + 442, int(y*20) + 442
-        X, Y = min(841, X), min(841, Y)
-        X, Y = max(42, X), max(42, Y)
+        global_path = self.move_base.robot_config.global_path
+        path_index = [
+            self._to_image_index(self, *tuple(coordinate))
+            for coordinate in global_path
+        ]
+        for ix, iy in path_index:
+            occupancy_grid[:, ix, iy] = -100
+        X, Y = path_index[0]  # robot position
         occupancy_grid = occupancy_grid[:, Y - 42:Y + 42, X - 42:X + 42]
-        occupancy_grid[np.where(occupancy_grid < 100)] = 0
-        occupancy_grid[np.where(occupancy_grid != 0)] = 1
+        obstacles_index = np.where(occupancy_grid == 100)
+        path_index = np.where(occupancy_grid == -100)
+        occupancy_grid[:, :, :] = 0.5
+        occupancy_grid[obstacles_index] = 1
+        occupancy_grid[path_index] = 0
         assert occupancy_grid.shape == (1, 84, 84), "x, y, z: %d, %d, %d; X, Y: %d, %d" %(occupancy_grid.shape[0], occupancy_grid.shape[1], occupancy_grid.shape[2], X, Y)
         
         return occupancy_grid
+    
+    @staticmethod
+    def _to_image_index(self, x, y):
+        X, Y = int(x*20) + 442, int(y*20) + 442
+        X, Y = min(841, X), min(841, Y)
+        X, Y = max(42, X), max(42, Y)
+        return X, Y
 
     def _get_observation(self):
         # observation is the 720 dim laser scan + one local goal in angle
