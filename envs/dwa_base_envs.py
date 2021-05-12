@@ -237,9 +237,12 @@ class DWABaseCostmap(DWABase):
         occupancy_grid = np.zeros((800 + PADDING * 2, 800 + PADDING * 2), dtype=float)
         occupancy_grid[PADDING:800 + PADDING, PADDING:800 + PADDING] = costmap
         
-        global_path = self.move_base.robot_config.global_path
+        global_path = []
+        while len(global_path) == 0:
+            global_path = self.move_base.robot_config.global_path
+            time.sleep(0.5)    
         path_index = [
-            self._to_image_index(self, *tuple(coordinate), padding=PADDING)
+            self._to_image_index(*tuple(coordinate), padding=PADDING)
             for coordinate in global_path
         ]
         for p in path_index:
@@ -263,7 +266,6 @@ class DWABaseCostmap(DWABase):
         
         return occupancy_grid
    
-    @staticmethod
     def rotate_image(self, image, angle):
         """
         Rotates an OpenCV 2 / NumPy image about it's centre by the given angle
@@ -332,7 +334,6 @@ class DWABaseCostmap(DWABase):
 
         return result
 
-    @staticmethod
     def _to_image_index(self, x, y, padding=42):
         X, Y = int(x*20) + 400 + padding, int(y*20) + 400 + padding
         X, Y = min(799 + padding, X), min(799 + padding, Y)

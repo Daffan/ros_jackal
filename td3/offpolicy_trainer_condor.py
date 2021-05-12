@@ -65,7 +65,7 @@ def offpolicy_trainer_condor(
     best_epoch, best_reward = -1, -1.
     stat = {}
     start_time = time.time()
-    results = collections.deque(maxlen=300)
+    results = collections.deque(maxlen=100)
     world_results = [collections.deque(maxlen=10) for _ in range(len(worlds))]
     world_count = [1] * len(worlds)
     world_pcount = [1] * len(worlds)
@@ -89,7 +89,7 @@ def offpolicy_trainer_condor(
                     world_count[w] += 1
                 for world in worlds:
                     w = worlds.index(world) 
-                    if world_count[w] // 100 > world_pcount[w] // 100:  # log per 100 episode 
+                    if world_count[w] // 10 > world_pcount[w] // 10:  # log per 100 episode 
                         for k in world_results[w][0].keys():
                             writer.add_scalar('%s' %(world) + "/" + k,
                                               np.mean([r[k] for r in world_results[w]]),
