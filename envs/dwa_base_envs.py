@@ -5,6 +5,7 @@ import roslaunch
 import time
 import numpy as np
 import os
+import cv2
 from os.path import dirname, join, abspath
 import subprocess
 from gym.spaces import Box, Discrete
@@ -229,35 +230,113 @@ class DWABaseCostmap(DWABase):
         )
 
     def _get_costmap(self):
+        PADDING = 62
         costmap = self.move_base.get_costmap().data
-        costmap = np.array(costmap, dtype="uint8").reshape(1, 800, 800)
+        costmap = np.array(costmap, dtype=float).reshape(800, 800)
         # padding to prevent out of index
-        occupancy_grid = np.zeros((1, 884, 884), dtype="uint8")
-        occupancy_grid[:, 42:842, 42:842] = costmap
+        occupancy_grid = np.zeros((800 + PADDING * 2, 800 + PADDING * 2), dtype=float)
+        occupancy_grid[PADDING:800 + PADDING, PADDING:800 + PADDING] = costmap
         
         global_path = self.move_base.robot_config.global_path
         path_index = [
-            self._to_image_index(self, *tuple(coordinate))
+            self._to_image_index(self, *tuple(coordinate), padding=PADDING)
             for coordinate in global_path
         ]
-        for ix, iy in path_index:
-            occupancy_grid[:, ix, iy] = -100
+        for p in path_index:
+            occupancy_grid[p[1], p[0]] = -100
         X, Y = path_index[0]  # robot position
-        occupancy_grid = occupancy_grid[:, Y - 42:Y + 42, X - 42:X + 42]
+        occupancy_grid = occupancy_grid[
+            Y - PADDING:Y + PADDING,
+            X - PADDING:X + PADDING
+        ]
         obstacles_index = np.where(occupancy_grid == 100)
         path_index = np.where(occupancy_grid == -100)
-        occupancy_grid[:, :, :] = 0.5
+        occupancy_grid[:, :] = 0.5
         occupancy_grid[obstacles_index] = 1
         occupancy_grid[path_index] = 0
+        psi = self.move_base.robot_config.PSI
+        occupancy_grid = self.rotate_image(occupancy_grid, psi/np.pi*180)
+        w, h = occupancy_grid.shape[0], occupancy_grid.shape[1]
+        occupancy_grid = occupancy_grid[w//2-42:w//2+42, h//2-42:h//2+42]
+        occupancy_grid = occupancy_grid.reshape(1, 84, 84)
         assert occupancy_grid.shape == (1, 84, 84), "x, y, z: %d, %d, %d; X, Y: %d, %d" %(occupancy_grid.shape[0], occupancy_grid.shape[1], occupancy_grid.shape[2], X, Y)
         
         return occupancy_grid
-    
+   
     @staticmethod
-    def _to_image_index(self, x, y):
-        X, Y = int(x*20) + 442, int(y*20) + 442
-        X, Y = min(841, X), min(841, Y)
-        X, Y = max(42, X), max(42, Y)
+    def rotate_image(self, image, angle):
+        """
+        Rotates an OpenCV 2 / NumPy image about it's centre by the given angle
+        (in degrees). The returned image will be large enough to hold the entire
+        new image, with a black background
+        """
+
+        # Get the image size
+        # No that's not an error - NumPy stores image matricies backwards
+        image_size = (image.shape[1], image.shape[0])
+        image_center = tuple(np.array(image_size) / 2)
+
+        # Convert the OpenCV 3x2 rotation matrix to 3x3
+        rot_mat = np.vstack(
+            [cv2.getRotationMatrix2D(image_center, angle, 1.0), [0, 0, 1]]
+        )
+
+        rot_mat_notranslate = np.matrix(rot_mat[0:2, 0:2])
+
+        # Shorthand for below calcs
+        image_w2 = image_size[0] * 0.5
+        image_h2 = image_size[1] * 0.5
+
+        # Obtain the rotated coordinates of the image corners
+        rotated_coords = [
+            (np.array([-image_w2,  image_h2]) * rot_mat_notranslate).A[0],
+            (np.array([ image_w2,  image_h2]) * rot_mat_notranslate).A[0],
+            (np.array([-image_w2, -image_h2]) * rot_mat_notranslate).A[0],
+            (np.array([ image_w2, -image_h2]) * rot_mat_notranslate).A[0]
+        ]
+
+        # Find the size of the new image
+        x_coords = [pt[0] for pt in rotated_coords]
+        x_pos = [x for x in x_coords if x > 0]
+        x_neg = [x for x in x_coords if x < 0]
+
+        y_coords = [pt[1] for pt in rotated_coords]
+        y_pos = [y for y in y_coords if y > 0]
+        y_neg = [y for y in y_coords if y < 0]
+
+        right_bound = max(x_pos)
+        left_bound = min(x_neg)
+        top_bound = max(y_pos)
+        bot_bound = min(y_neg)
+
+        new_w = int(abs(right_bound - left_bound))
+        new_h = int(abs(top_bound - bot_bound))
+
+        # We require a translation matrix to keep the image centred
+        trans_mat = np.matrix([
+            [1, 0, int(new_w * 0.5 - image_w2)],
+            [0, 1, int(new_h * 0.5 - image_h2)],
+            [0, 0, 1]
+        ])
+
+        # Compute the tranform for the combined rotation and translation
+        affine_mat = (np.matrix(trans_mat) * np.matrix(rot_mat))[0:2, :]
+
+        # Apply the transform
+        result = cv2.warpAffine(
+            image,
+            affine_mat,
+            (new_w, new_h),
+            flags=cv2.INTER_LINEAR
+        )
+
+        return result
+
+    @staticmethod
+    def _to_image_index(self, x, y, padding=42):
+        X, Y = int(x*20) + 400 + padding, int(y*20) + 400 + padding
+        X, Y = min(799 + padding, X), min(799 + padding, Y)
+        X, Y = max(padding, X), max(padding, Y)
         return X, Y
 
     def _get_observation(self):
@@ -272,9 +351,9 @@ class DWABaseCostmap(DWABase):
         from matplotlib import pyplot as plt
         import cv2
 
-        costmap = costmap * 100
+        costmap = (costmap * 100).astype(int)
         costmap = np.transpose(costmap, axes=(1, 2, 0)) + 100
         costmap = np.repeat(costmap, 3, axis=2)
-        plt.imshow(costmap)
+        plt.imshow(costmap, origin="bottomleft")
         plt.show(block=False)
         plt.pause(.5)
