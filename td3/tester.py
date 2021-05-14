@@ -1,7 +1,7 @@
-from actor import initialize_actor, load_model, write_buffer
+from actor import initialize_actor, write_buffer
 from train import initialize_policy
 import os
-from os.path import dirname, abspath
+from os.path import dirname, abspath, join
 import gym
 import torch
 import argparse
@@ -10,9 +10,9 @@ from tianshou.data import Batch
 
 import sys
 sys.path.append(dirname(dirname(abspath(__file__))))
-from envs.wrappers import ShapingRewardWrapper
+from envs.wrappers import ShapingRewardWrapper, StackFrame
 
-BASE_PATH = os.getenv('BUFFER_PATH')
+BUFFER_PATH = os.getenv('BUFFER_PATH')
 
 def get_world_name(config, id):
     # We test each test world with two actors, so duplicate the lict by a factor of two
@@ -20,6 +20,13 @@ def get_world_name(config, id):
     if isinstance(world_name, int):
         world_name = "BARN/world_%d.world" %(world_name)
     return world_name
+
+def load_model(policy):
+    model_path = join(BUFFER_PATH, 'policy.pth')
+    state_dict = torch.load(model_path, map_location="cpu")
+    policy.load_state_dict(state_dict)
+    policy = policy.float()
+    return policy
 
 def main(args):
     config = initialize_actor(args.id)
@@ -32,9 +39,10 @@ def main(args):
     env = gym.make(env_config["env_id"], **env_config["kwargs"])
     if env_config["shaping_reward"]:
         env = ShapingRewardWrapper(env)
+    env = StackFrame(env, stack_frame=env_config["stack_frame"]) 
 
     policy, _ = initialize_policy(config, env)
-    policy, eps = load_model(policy)
+    policy = load_model(policy)
 
     print(">>>>>>>>>>>>>> Running on %s <<<<<<<<<<<<<<<<" %(world_name))
     ep = 0
@@ -44,10 +52,6 @@ def main(args):
         ep += 1
         traj = []
         done = False
-        try:
-            policy.set_exp_noise(GaussianNoise(sigma=eps))
-        except:
-            pass
         while not done:
             obs = torch.tensor([obs]).float()
             if test_object == "local":

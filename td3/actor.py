@@ -19,7 +19,7 @@ from tianshou.data import Batch
 from policy import TD3Policy, SACPolicy
 from train import initialize_envs, initialize_policy
 from envs import registration
-from envs.wrappers import ShapingRewardWrapper
+from envs.wrappers import ShapingRewardWrapper, StackFrame
 
 BUFFER_PATH = os.getenv('BUFFER_PATH')
 
@@ -117,6 +117,7 @@ def main(id):
     env = gym.make(env_config["env_id"], **env_config["kwargs"])
     if env_config["shaping_reward"]:
         env = ShapingRewardWrapper(env)
+    env = StackFrame(env, stack_frame=env_config["stack_frame"])
 
     policy, _ = initialize_policy(config, env)
 

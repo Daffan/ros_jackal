@@ -261,8 +261,8 @@ class DWABaseCostmap(DWABase):
         occupancy_grid = self.rotate_image(occupancy_grid, psi/np.pi*180)
         w, h = occupancy_grid.shape[0], occupancy_grid.shape[1]
         occupancy_grid = occupancy_grid[w//2-42:w//2+42, h//2-42:h//2+42]
-        occupancy_grid = occupancy_grid.reshape(1, 84, 84)
-        assert occupancy_grid.shape == (1, 84, 84), "x, y, z: %d, %d, %d; X, Y: %d, %d" %(occupancy_grid.shape[0], occupancy_grid.shape[1], occupancy_grid.shape[2], X, Y)
+        occupancy_grid = occupancy_grid.reshape(84, 84)
+        assert occupancy_grid.shape == (84, 84), "x, y, z: %d, %d, %d; X, Y: %d, %d" %(occupancy_grid.shape[0], occupancy_grid.shape[1], occupancy_grid.shape[2], X, Y)
         
         return occupancy_grid
    
@@ -352,7 +352,7 @@ class DWABaseCostmap(DWABase):
         from matplotlib import pyplot as plt
         import cv2
 
-        costmap = (costmap * 100).astype(int)
+        costmap = (costmap * 100).astype(int).reshape(-1, 84, 84)
         costmap = np.transpose(costmap, axes=(1, 2, 0)) + 100
         costmap = np.repeat(costmap, 3, axis=2)
         plt.imshow(costmap, origin="bottomleft")

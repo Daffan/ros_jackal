@@ -20,12 +20,12 @@ from tianshou.env import DummyVectorEnv
 sys.path.append(dirname(dirname(abspath(__file__))))
 from policy import TD3Policy
 from envs import registration
-from envs.wrappers import ShapingRewardWrapper
+from envs.wrappers import ShapingRewardWrapper, StackFrame
 from offpolicy_trainer import offpolicy_trainer
 from offpolicy_trainer_condor import offpolicy_trainer_condor
 from collector import Collector as CondorCollector
 from infomation_envs import InfoEnv
-from model import CNN, Critic  # comtumized Critic to cover the the CNN case
+from model import Cnn1d, Cnn2d, Cnn2dDeep, Critic  # comtumized Critic to cover the the CNN case
 
 def initialize_config(config_path, save_path):
     # Load the config files
@@ -69,6 +69,7 @@ def initialize_envs(config):
         env = gym.make(env_config["env_id"], **env_config["kwargs"])
         if env_config["shaping_reward"]:
             env = ShapingRewardWrapper(env)
+        env = StackFrame(env, stack_frame=env_config["stack_frame"])
         train_envs = DummyVectorEnv([lambda: env for _ in range(1)])
     else:
         # If use condor, we want to avoid initializing env instance from the central learner
@@ -101,9 +102,22 @@ def initialize_policy(config, env):
             device=device,
             hidden_layer_size=training_config['hidden_size']
         )
-    elif training_config["network"] == "cnn":
-        make_net =  lambda act_shape: CNN(
+    elif training_config["network"] == "cnn1d":
+        make_net =  lambda act_shape: Cnn1D(
             action_shape=act_shape,
+            num_frames=config["env_config"]["stack_frame"],
+            device=device
+        )
+    elif training_config["network"] == "cnn2d":
+        make_net =  lambda act_shape: Cnn2d(
+            action_shape=act_shape,
+            num_frames=config["env_config"]["stack_frame"],
+            device=device
+        )
+    elif training_config["network"] == "cnn2d_deep":
+        make_net =  lambda act_shape: Cnn2dDeep(
+            action_shape=act_shape,
+            num_frames=config["env_config"]["stack_frame"],
             device=device
         )
     else:
