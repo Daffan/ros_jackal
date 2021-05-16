@@ -76,7 +76,7 @@ class DDPGPolicy(BasePolicy):
         self._rew_norm = reward_normalization
         assert estimation_step > 0, "estimation_step should be greater than 0"
         self._n_step = estimation_step
-        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.device = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu')
         self._action_scale = torch.tensor((action_range[1] - action_range[0]) / 2.0, device=self.device)
         self._action_bias = torch.tensor((action_range[0] + action_range[1]) / 2.0, device=self.device)
 

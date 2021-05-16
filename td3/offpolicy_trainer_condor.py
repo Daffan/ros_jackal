@@ -85,6 +85,7 @@ def offpolicy_trainer_condor(
                     world_results[w].append({"ep_rew": result["ep_rew"][i],\
                                           "ep_len": result["ep_len"][i],\
                                           "success": result["success"][i],\
+                                          "time": result["time"][i],\
                                           "global_step": global_step})
                     world_count[w] += 1
                 for world in worlds:
@@ -95,9 +96,10 @@ def offpolicy_trainer_condor(
                                               np.mean([r[k] for r in world_results[w]]),
                                               global_step=world_count[w])
                 n_ep = len(result["success"])
-                result = [{"ep_rew":result["ep_rew"][i],\
-                           "ep_len":result["ep_len"][i],\
-                           "success":result["success"][i]}\
+                result = [{"ep_rew": result["ep_rew"][i],\
+                           "ep_len": result["ep_len"][i],\
+                           "success": result["success"][i],\
+                           "time": result["time"][i]}\
                            for i in range(n_ep)]
                 results.extend(result)
                 data = {"n_ep": n_ep}

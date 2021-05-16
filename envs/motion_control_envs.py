@@ -11,10 +11,10 @@ class MotionControlContinuous(DWABase):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self._cmd_vel_pub = rospy.Publisher('/cmd_vel', Twist, queue_size=1)
-
+        self.params = None
         # same as the parameters to tune
         self.action_space = Box(
-            low=np.array([0.1, 0.314]),
+            low=np.array([0.1, -3.14]),
             high=np.array([2, 3.14]),
             dtype=np.float32
         )
@@ -30,6 +30,7 @@ class MotionControlContinuous(DWABase):
         self.gazebo_sim.reset()
         self.move_base.make_plan()
         self._clear_costmap()
+        self.start_time = rospy.get_time()
         return self._get_observation()
 
     def step(self, action):

@@ -89,13 +89,14 @@ class DWABase(gym.Env):
         self.gazebo_sim.reset()
         self.move_base.set_global_goal()
         self._clear_costmap()
+        self.start_time = rospy.get_time()
         return self._get_observation()
 
     def _clear_costmap(self):
         self.move_base.clear_costmap()
-        time.sleep(0.1)
+        rospy.sleep(0.1)
         self.move_base.clear_costmap()
-        time.sleep(0.1)
+        rospy.sleep(0.1)
         self.move_base.clear_costmap()
 
     def step(self, action):
@@ -137,7 +138,10 @@ class DWABase(gym.Env):
         return done
 
     def _get_info(self):
-        return dict(world=self.world_name)
+        return dict(
+            world=self.world_name,
+            time=rospy.get_time() - self.start_time
+        )
 
     def _get_local_goal(self):
         """get local goal in angle
@@ -237,17 +241,17 @@ class DWABaseCostmap(DWABase):
         occupancy_grid = np.zeros((800 + PADDING * 2, 800 + PADDING * 2), dtype=float)
         occupancy_grid[PADDING:800 + PADDING, PADDING:800 + PADDING] = costmap
         
-        global_path = []
-        while len(global_path) == 0:
-            global_path = self.move_base.robot_config.global_path
-            time.sleep(0.5)    
-        path_index = [
-            self._to_image_index(*tuple(coordinate), padding=PADDING)
-            for coordinate in global_path
-        ]
-        for p in path_index:
-            occupancy_grid[p[1], p[0]] = -100
-        X, Y = path_index[0]  # robot position
+        global_path = self.move_base.robot_config.global_path
+        if len(global_path) > 0:
+            path_index = [
+                self._to_image_index(*tuple(coordinate), padding=PADDING)
+                for coordinate in global_path
+            ]
+            for p in path_index:
+                occupancy_grid[p[1], p[0]] = -100
+
+        X, Y = self.move_base.robot_config.X, self.move_base.robot_config.Y  # robot position
+        X, Y = self._to_image_index(X, Y, padding=PADDING)
         occupancy_grid = occupancy_grid[
             Y - PADDING:Y + PADDING,
             X - PADDING:X + PADDING

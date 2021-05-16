@@ -14,6 +14,8 @@ def main(buffer_path):
     config = yaml.load(f, Loader=yaml.FullLoader)
     num_trials = config["condor_config"]["num_trials"]
     ep_lengths = []
+    times = []
+    successes = []
     flag = True
 
     save_path = join(buffer_path, "test_result.txt")
@@ -33,10 +35,13 @@ def main(buffer_path):
                     ep_return = sum([t[2] for t in traj])
                     ep_length = len(traj)
                     success = int(traj[-1][-1]['success'])
+                    time = float(traj[-1][-1]['time'])
                     
                     if len(filenames) == num_trials and world not in worlds:
-                        outf.write("%d %d %f %d\n" %(world, ep_length, ep_return, success))
+                        outf.write("%d %d %f %d %.2f\n" %(world, ep_length, ep_return, success, time))
                         ep_lengths.append(float(ep_length))
+                        times.append(time)
+                        successes.append(success)
                     else:
                         break
                 except:
@@ -56,7 +61,7 @@ def main(buffer_path):
     if flag:
         print("Test finished!")
         print("Find the test result under %s" %(save_path))
-        print("Quick report: avg time %.2f" %(sum(ep_lengths)/len(ep_lengths)))
+        print("Quick report: avg ep_len %.2f, avg time: %.2f, success rate: %.2f" %(sum(ep_lengths)/len(ep_lengths), sum(times)/len(times), sum(successes)/len(successes)))
     else:
         print("Some tests are still running")
 

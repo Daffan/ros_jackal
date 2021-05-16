@@ -16,7 +16,7 @@ import envs.registration
 def main():
     
     env = gym.make(
-        id='dwa_param_continuous_costmap-v0', 
+        id='dwa_param_continuous_laser-v0', 
         param_init=[0.5, 1.57, 6, 20, 0.75, 1, 0.3],
         param_list=["max_vel_x", 
                       "max_vel_theta", 
@@ -62,7 +62,7 @@ def main():
         Y = env.move_base.robot_config.Y
         X = env.move_base.robot_config.X
         p = env.gazebo_sim.get_model_state().pose.position
-        print('current step: %d, X position: %f(world_frame), %f(odem_frame), Y position: %f(world_frame), %f(odom_frame), rew: %f' %(count, p.x, X, p.y, Y , rew))
+        print('current step: %d, time: %.2f, X position: %f(world_frame), %f(odem_frame), Y position: %f(world_frame), %f(odom_frame), rew: %f' %(count, info["time"], p.x, X, p.y, Y , rew))
         print("actions: ", actions)
         # env.visual_costmap(obs)
         if done:

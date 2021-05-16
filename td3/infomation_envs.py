@@ -20,7 +20,7 @@ class InfoEnv:
             )
         elif env_id.startswith("motion_control_continuous"):
             action_space = Box(
-                low=np.array([0.1, 0.314]),
+                low=np.array([0.1, -3.14]),
                 high=np.array([2, 3.14]),
                 dtype=np.float32
             )

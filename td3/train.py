@@ -91,7 +91,7 @@ def initialize_policy(config, env):
     action_shape = env.action_space.shape
     action_space_low = env.action_space.low
     action_space_high = env.action_space.high
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    device = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu')
 
     if training_config["network"] == "mlp":
         make_net = lambda act_shape: MLP(
@@ -103,7 +103,7 @@ def initialize_policy(config, env):
             hidden_layer_size=training_config['hidden_size']
         )
     elif training_config["network"] == "cnn1d":
-        make_net =  lambda act_shape: Cnn1D(
+        make_net =  lambda act_shape: Cnn1d(
             action_shape=act_shape,
             num_frames=config["env_config"]["stack_frame"],
             device=device

@@ -67,6 +67,7 @@ class Collector(object):
         ep_len = []
         success = []
         world = []
+        times = []
         while steps < n_step:
             time.sleep(1)
             for id in self.ids:
@@ -85,6 +86,7 @@ class Collector(object):
                                 ep_len.append(len(traj))
                                 success.append(float(traj[-1][-1]['success']))
                                 world.append(traj[-1][-1]['world'])
+                                times.append(traj[-1][-1]['time'])
                                 self.buffer_expand(traj)
                                 steps += len(traj)
                             os.remove(join(base, p))
@@ -93,5 +95,5 @@ class Collector(object):
                         print("failed to load actor_%s:%s" %(id, p))
                         os.remove(join(base, p))
                         pass
-        return {'n/st': steps, 'n/stt': steps, 'ep_rew': ep_rew, 'ep_len': ep_len, 'success': success, 'world': world}
+        return {'n/st': steps, 'n/stt': steps, 'ep_rew': ep_rew, 'ep_len': ep_len, 'success': success, 'world': world, 'time': times}
 

@@ -13,20 +13,20 @@ class Cnn2d(nn.Module):
         super().__init__()
         self.device = device
         self.conv1 = nn.Sequential(
-            nn.Conv2d(in_channels=num_frames, out_channels=32, kernel_size=(8, 8), stride=(4, 4)),
+            nn.Conv2d(in_channels=num_frames, out_channels=16, kernel_size=(8, 8), stride=(4, 4)),
             nn.ReLU()
         )
         self.conv2 = nn.Sequential(
-            nn.Conv2d(in_channels=32, out_channels=64, kernel_size=(4, 4), stride=(2, 2)),
+            nn.Conv2d(in_channels=16, out_channels=32, kernel_size=(4, 4), stride=(2, 2)),
             nn.ReLU()
         )
         self.conv3 = nn.Sequential(
-            nn.Conv2d(in_channels=64, out_channels=64, kernel_size=(3, 3), stride=(1, 1)),
+            nn.Conv2d(in_channels=32, out_channels=32, kernel_size=(3, 3), stride=(1, 1)),
             nn.ReLU()
         )
         self.fc1 = nn.Sequential(
             nn.Flatten(),
-            nn.Linear(3136, 512),
+            nn.Linear(1568, 512),
             nn.ReLU()
         )
         self.fc2 = nn.Sequential(
