@@ -91,7 +91,7 @@ def initialize_policy(config, env):
     action_shape = env.action_space.shape
     action_space_low = env.action_space.low
     action_space_high = env.action_space.high
-    device = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu')
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     if training_config["network"] == "mlp":
         make_net = lambda act_shape: MLP(
@@ -230,7 +230,10 @@ def train(train_envs, policy, buffer, config):
         train_envs.close()
 
 if __name__ == "__main__":
-    CONFIG_PATH = "configs/config.yaml"
+    parser = argparse.ArgumentParser(description = 'Start condor training')
+    parser.add_argument('--config_path', dest='config_path', default="../configs/config.ymal")
+    args = parser.parse_args()
+    CONFIG_PATH = args.config_path
     SAVE_PATH = "logging/"
     print(">>>>>>>> Loading the configuration from %s" % CONFIG_PATH)
     config = initialize_config(CONFIG_PATH, SAVE_PATH)

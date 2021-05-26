@@ -8,7 +8,7 @@ import re
 import pickle
 import shutil
 
-BASE_PATH = os.getenv('BUFFER_PATH')
+BUFFER_PATH = os.getenv('BUFFER_PATH')
 class Collector(object):
 
     def __init__(self, policy, env, replaybuffer):
@@ -22,25 +22,25 @@ class Collector(object):
         self.ep_count = [0]*self.num_actor
         self.buffer = replaybuffer
 
-        if not exists(BASE_PATH):
-            os.mkdir(BASE_PATH)
+        if not exists(BUFFER_PATH):
+            os.mkdir(BUFFER_PATH)
         # save the current policy
         self.update_policy()
         # save the env config the actor should read from
         shutil.copyfile(
-            "configs/config.yaml", 
-            join(BASE_PATH, "config.yaml")    
+            env.config["env_config"]["config_path"], 
+            join(BUFFER_PATH, "config.yaml")    
         )
 
     def update_policy(self):
         # torch.save(self.policy.state_dict(), join(BASE_PATH, 'policy_copy.pth'))
         device = self.policy.device
         self.policy.to("cpu")
-        with open(join(BASE_PATH, "policy_copy.pth"), "wb") as f:
+        with open(join(BUFFER_PATH, "policy_copy.pth"), "wb") as f:
             pickle.dump(self.policy.state_dict(), f)
-        shutil.move(join(BASE_PATH, 'policy_copy.pth'), join(BASE_PATH, 'policy.pth'))
+        shutil.move(join(BUFFER_PATH, 'policy_copy.pth'), join(BUFFER_PATH, 'policy.pth'))
         self.policy.to(device)
-        with open(join(BASE_PATH, 'eps.txt'), 'w') as f:
+        with open(join(BUFFER_PATH, 'eps.txt'), 'w') as f:
             try:
                 std = self.policy._noise._sigma
             except:
@@ -71,11 +71,12 @@ class Collector(object):
         while steps < n_step:
             time.sleep(1)
             for id in self.ids:
-                base = join(BASE_PATH, 'actor_%d' %(id))
+                base = join(BUFFER_PATH, 'actor_%d' %(id))
                 try:
                     traj_files = os.listdir(base)
                 except:
                     traj_files = []
+                traj_files = traj_files[:-1]
                 for p in traj_files:
                     try:
                         target = join(base, p)
@@ -93,7 +94,7 @@ class Collector(object):
                     except:
                         logging.exception('')
                         print("failed to load actor_%s:%s" %(id, p))
-                        os.remove(join(base, p))
+                        # os.remove(join(base, p))
                         pass
         return {'n/st': steps, 'n/stt': steps, 'ep_rew': ep_rew, 'ep_len': ep_len, 'success': success, 'world': world, 'time': times}
 

@@ -13,14 +13,12 @@ import uuid
 import argparse
 
 parser = argparse.ArgumentParser(description = 'Start condor training')
+parser.add_argument('--config_path', dest='config_path', default="../configs/config.ymal")
 parser.add_argument('--local_update', dest='local_update', action="store_true")
 args = parser.parse_args()
 
 # Load condor config
-CONFIG_PATH = "configs/config.yaml"
-with open(CONFIG_PATH, 'r') as f:
-    config = yaml.load(f, Loader=yaml.FullLoader)
-num_actor = config["condor_config"]["num_actor"]
+CONFIG_PATH = args.config_path
 
 if not os.getenv('BUFFER_PATH'):
     hash_code = uuid.uuid4().hex
@@ -68,6 +66,10 @@ if not args.local_update:
     time.sleep(60)  # wait for central learner to be initialized 
 
 # Actor submission
+with open(os.path.join(buffer_path, "config.yaml"), 'r') as f:
+    config = yaml.load(f, Loader=yaml.FullLoader)
+num_actor = config["condor_config"]["num_actor"]
+
 submission_file = os.path.join(buffer_path, 'actors.sub')
 cfile = open(submission_file, 'w')
 s = 'executable/actor.sh'

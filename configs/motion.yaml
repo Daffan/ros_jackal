@@ -1,6 +1,6 @@
 env_config:
   use_condor: True
-  env_id: "dwa_motion_control_contiuous_laser-v0"
+  env_id: "motion_control_continuous_laser-v0"
   seed: 13
   shaping_reward: True
   stack_frame: 1
@@ -8,10 +8,11 @@ env_config:
     world_name: "world_0.world"
     gui: false
     verbose: false
-    max_step: 100
+    max_step: 1000
     time_step: 0.2
+    laser_clip: 2
     slack_reward: 0
-    failure_reward: -100
+    failure_reward: -20
     success_reward: 20
     init_position: [-2, 2, 1.57]
     goal_position: [0, 10, 0]
@@ -31,7 +32,7 @@ training_config:
 
   policy_args:
     tau: 0.005
-    gamma: 0.95
+    gamma: 0.99
     policy_noise: 0.2
     update_actor_freq: 2
     noise_clip: 0.5
@@ -40,15 +41,15 @@ training_config:
     estimation_step: 4
 
   training_args:
-    max_epoch: 100
+    max_epoch: 500
     step_per_epoch: 1000
-    collect_per_step: 1
+    collect_per_step: 5
     update_per_step: 1
     batch_size: 128
 
 condor_config:
   test_object: "local"  # or "dwa"
-  num_actor: 10
+  num_actor: 50
   worlds: [28]
   # worlds: [28, 48, 107, 155, 177]
   # worlds: [280, 299, 80, 155, 119, 172, 161, 82, 255, 206, 164, 137, 177, 158, 204, 110, 241, 167, 293, 51, 101, 36, 73, 28, 207, 295, 275, 136, 46, 288, 213, 151, 156, 71, 61, 192, 160, 9, 260, 271, 35, 297, 58, 55, 220, 107, 174, 91, 38, 141]

@@ -121,8 +121,12 @@ class DWABase(gym.Env):
         robot_position = np.array([self.move_base.robot_config.X, 
                                    self.move_base.robot_config.Y]) # robot position in odom frame
         goal_position = np.array(self.goal_position[:2])
-        self.goal_distance = np.sqrt(np.sum((robot_position - goal_position) ** 2))
-        return self.goal_distance < 0.4
+        if self.world_name.startswith("BARN"):
+            robot_position = self.gazebo_sim.get_model_state().pose.position
+            return robot_position.y > 11  # the special condition for BARN    
+        else:
+            self.goal_distance = np.sqrt(np.sum((robot_position - goal_position) ** 2))
+            return self.goal_distance < 0.4
 
     def _get_reward(self):
         rew = self.slack_reward
