@@ -12,9 +12,10 @@ import random
 import numpy as np
 
 import envs.registration
+from envs.wrappers import ShapingRewardWrapper
 
 def main():
-    
+    """ 
     env = gym.make(
         id='dwa_param_continuous_laser-v0', 
         param_init=[0.5, 1.57, 6, 20, 0.75, 1, 0.3],
@@ -37,9 +38,13 @@ def main():
         gui=True,
         init_position=[-2, 2, np.pi/2],
         goal_position=[0, 10, 0],
-        time_step=0.2
+        time_step=0.2,
+        slack_reward=0,
+        success_reward=10,
+        collision_reward=-10,
+        failure_reward=-50
     )
-    """
+    env = ShapingRewardWrapper(env)
     env.reset()
     done  = False
     count = 0

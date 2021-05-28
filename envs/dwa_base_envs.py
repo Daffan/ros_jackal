@@ -84,12 +84,14 @@ class DWABase(gym.Env):
         """
         self.step_count=0
         # Reset robot in odom frame clear_costmap
+        self.gazebo_sim.unpause()
         self.move_base.reset_robot_in_odom()
         # Resets the state of the environment and returns an initial observation
         self.gazebo_sim.reset()
         self.move_base.set_global_goal()
         self._clear_costmap()
         self.start_time = rospy.get_time()
+        self.gazebo_sim.pause()
         return self._get_observation()
 
     def _clear_costmap(self):
@@ -130,7 +132,7 @@ class DWABase(gym.Env):
 
     def _get_reward(self):
         rew = self.slack_reward
-        if self.step_count >= self.max_step:
+        if self.step_count >= self.max_step or self._get_flip_status():
             rew = self.failure_reward
         if self._get_success():
             rew = self.success_reward
@@ -138,8 +140,12 @@ class DWABase(gym.Env):
 
     def _get_done(self):
         success = self._get_success()
-        done = success or self.step_count >= self.max_step
+        done = success or self.step_count >= self.max_step or self._get_flip_status()
         return done
+
+    def _get_flip_status(self):
+        robot_position = self.gazebo_sim.get_model_state().pose.position
+        return robot_position.z > 0.1
 
     def _get_info(self):
         return dict(

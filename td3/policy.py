@@ -1,4 +1,5 @@
 import torch
+import GPUtil
 import numpy as np
 from copy import deepcopy
 from typing import Any, Dict, Tuple, Union, Optional
@@ -48,6 +49,7 @@ class DDPGPolicy(BasePolicy):
         reward_normalization: bool = False,
         ignore_done: bool = False,
         estimation_step: int = 1,
+        device: str = "cpu",
         **kwargs: Any,
     ) -> None:
         super().__init__(**kwargs)
@@ -76,7 +78,9 @@ class DDPGPolicy(BasePolicy):
         self._rew_norm = reward_normalization
         assert estimation_step > 0, "estimation_step should be greater than 0"
         self._n_step = estimation_step
-        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        # devices = GPUtil.getAvailable(order = 'first', limit = 1, maxLoad = 0.8, maxMemory = 0.8, includeNan=False, excludeID=[], excludeUUID=[])
+        # self.device = "cuda:%d" %(devices[0]) if len(devices) > 0 else "cpu"
+        self.device = device
         self._action_scale = torch.tensor((action_range[1] - action_range[0]) / 2.0, device=self.device)
         self._action_bias = torch.tensor((action_range[0] + action_range[1]) / 2.0, device=self.device)
 

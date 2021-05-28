@@ -1,4 +1,5 @@
 from os.path import exists, join
+import numpy as np
 import yaml
 import os
 import torch
@@ -57,6 +58,11 @@ class Collector(object):
     def natural_keys(self, text):
         return int(re.split(r'(\d+)', text)[1])
 
+    def sort_traj_name(self, traj_files):
+        ep_idx = np.array([self.natural_keys(fn) for fn in traj_files])
+        idx = np.argsort(ep_idx)
+        return np.array(traj_files)[idx]
+
     def collect(self, n_step):
         """ This method searches the buffer folder and collect all the saved trajectories
         """
@@ -76,7 +82,7 @@ class Collector(object):
                     traj_files = os.listdir(base)
                 except:
                     traj_files = []
-                traj_files = traj_files[:-1]
+                traj_files = self.sort_traj_name(traj_files)[:-1]
                 for p in traj_files:
                     try:
                         target = join(base, p)

@@ -1,4 +1,5 @@
 import argparse
+import GPUtil
 import yaml
 import numpy as np
 import gym
@@ -91,7 +92,8 @@ def initialize_policy(config, env):
     action_shape = env.action_space.shape
     action_space_low = env.action_space.low
     action_space_high = env.action_space.high
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    devices = GPUtil.getAvailable(order = 'first', limit = 1, maxLoad = 0.8, maxMemory = 0.8, includeNan=False, excludeID=[], excludeUUID=[])
+    device = "cuda:%d" %(devices[0]) if len(devices) > 0 else "cpu"
 
     if training_config["network"] == "mlp":
         make_net = lambda act_shape: MLP(
@@ -167,6 +169,7 @@ def initialize_policy(config, env):
         critic2, critic2_optim,
         exploration_noise=exploration_noise,
         action_range=[action_space_low, action_space_high],
+        device=device,
         **training_args
     )
 

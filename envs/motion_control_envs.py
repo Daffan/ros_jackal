@@ -8,8 +8,9 @@ from geometry_msgs.msg import Twist
 from envs.dwa_base_envs import DWABase, DWABaseLaser, DWABaseCostmap
 
 class MotionControlContinuous(DWABase):
-    def __init__(self, **kwargs):
+    def __init__(self, collision_reward=-1, **kwargs):
         super().__init__(**kwargs)
+        self.collision_reward = collision_reward
         self._cmd_vel_pub = rospy.Publisher('/cmd_vel', Twist, queue_size=1)
         self.params = None
         # same as the parameters to tune
@@ -25,17 +26,27 @@ class MotionControlContinuous(DWABase):
         """
         self.step_count=0
         # Reset robot in odom frame clear_costmap
+        self.gazebo_sim.unpause()
         self.move_base.reset_robot_in_odom()
         # Resets the state of the environment and returns an initial observation
         self.gazebo_sim.reset()
         self.move_base.make_plan()
         self._clear_costmap()
         self.start_time = rospy.get_time()
+        self.gazebo_sim.pause()
         return self._get_observation()
 
     def step(self, action):
         self.move_base.make_plan()
         return super().step(action) 
+
+    def _get_reward(self):
+        rew = super()._get_reward()
+        laser_scan = np.array(self.gazebo_sim.get_laser_scan().ranges)
+        d = np.mean(sorted(laser_scan)[:10])
+        if d < 0.5:
+            rew += self.collision_reward / (d + 0.05)
+        return rew
 
     def _get_info(self):
         info = dict(success=self._get_success(), params=self.params)
@@ -49,7 +60,9 @@ class MotionControlContinuous(DWABase):
         cmd_vel_value.angular.z = angular_speed
 
         self._cmd_vel_pub.publish(cmd_vel_value)
+        self.gazebo_sim.unpause()
         rospy.sleep(self.time_step)
+        self.gazebo_sim.pause()
 
 
 class MotionControlContinuousLaser(MotionControlContinuous, DWABaseLaser):

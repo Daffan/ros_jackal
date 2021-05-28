@@ -1,3 +1,4 @@
+import os
 import time
 import tqdm
 import yaml
@@ -56,8 +57,10 @@ def offpolicy_trainer_condor(
     def int_to_BARN_world(w):
         return "BARN/world_%d.world" %(w)
 
-    with open("configs/config.yaml", "r") as f:
+    buffer_path = os.getenv('BUFFER_PATH')
+    with open(os.path.join(buffer_path, "config.yaml"), "r") as f:
         config = yaml.load(f, Loader=yaml.FullLoader)
+
     worlds = [int_to_BARN_world(w) if isinstance(w, int) else w for w in config["condor_config"]["worlds"]]
 
     global_step = 0
