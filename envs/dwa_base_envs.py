@@ -91,8 +91,9 @@ class DWABase(gym.Env):
         self.move_base.set_global_goal()
         self._clear_costmap()
         self.start_time = rospy.get_time()
+        obs = self._get_observation()
         self.gazebo_sim.pause()
-        return self._get_observation()
+        return obs
 
     def _clear_costmap(self):
         self.move_base.clear_costmap()
@@ -106,10 +107,12 @@ class DWABase(gym.Env):
         """
         self._take_action(action)
         self.step_count += 1
+        self.gazebo_sim.unpause()
         obs = self._get_observation()
         rew = self._get_reward()
         done = self._get_done()
         info = self._get_info()
+        self.gazebo_sim.pause()
         return obs, rew, done, info
 
     def _take_action(self, action):

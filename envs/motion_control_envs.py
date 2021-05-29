@@ -33,12 +33,9 @@ class MotionControlContinuous(DWABase):
         self.move_base.make_plan()
         self._clear_costmap()
         self.start_time = rospy.get_time()
+        obs = self._get_observation()
         self.gazebo_sim.pause()
-        return self._get_observation()
-
-    def step(self, action):
-        self.move_base.make_plan()
-        return super().step(action) 
+        return obs
 
     def _get_reward(self):
         rew = super()._get_reward()
@@ -59,8 +56,9 @@ class MotionControlContinuous(DWABase):
         cmd_vel_value.linear.x = linear_speed
         cmd_vel_value.angular.z = angular_speed
 
-        self._cmd_vel_pub.publish(cmd_vel_value)
         self.gazebo_sim.unpause()
+        self._cmd_vel_pub.publish(cmd_vel_value)
+        self.move_base.make_plan()
         rospy.sleep(self.time_step)
         self.gazebo_sim.pause()
 

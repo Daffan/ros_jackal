@@ -49,13 +49,13 @@ class DWAParamContinuous(DWABase):
         assert len(action) == len(self.param_list), "length of the params should match the length of the action"
         self.params = action
         # Set the parameters
+        self.gazebo_sim.unpause()
         for param_value, param_name in zip(action, self.param_list):
             high_limit = RANGE_DICT[param_name][1]
             low_limit = RANGE_DICT[param_name][0]
             param_value = float(np.clip(param_value, low_limit, high_limit))
             self.move_base.set_navi_param(param_name, param_value)
         # Wait for robot to navigate for one time step
-        self.gazebo_sim.unpause()
         rospy.sleep(self.time_step)
         self.gazebo_sim.pause()
 

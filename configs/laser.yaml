@@ -49,9 +49,9 @@ training_config:
     estimation_step: 4
 
   training_args:
-    max_epoch: 1000
+    max_epoch: 500
     step_per_epoch: 1000
-    collect_per_step: 10
+    collect_per_step: 2
     update_per_step: 1
     batch_size: 128
 

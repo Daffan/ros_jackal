@@ -15,7 +15,6 @@ import envs.registration
 from envs.wrappers import ShapingRewardWrapper
 
 def main():
-    """ 
     env = gym.make(
         id='dwa_param_continuous_laser-v0', 
         param_init=[0.5, 1.57, 6, 20, 0.75, 1, 0.3],
@@ -44,6 +43,7 @@ def main():
         collision_reward=-10,
         failure_reward=-50
     )
+    """
     env = ShapingRewardWrapper(env)
     env.reset()
     done  = False
@@ -54,7 +54,6 @@ def main():
     low = env.action_space.low
     bias = (high + low) / 2
     scale = (high - low) / 2
-
     for _ in range(1000): # run 10 steps
 
         actions = 2*(np.random.rand(env.action_space.shape[0]) - 0.5)
