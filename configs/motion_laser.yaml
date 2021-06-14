@@ -1,17 +1,18 @@
 env_config:
   use_condor: True
-  env_id: "motion_control_continuous_costmap-v0"
+  env_id: "motion_control_continuous_laser-v0"
   seed: 13
   shaping_reward: True
-  stack_frame: 4
+  stack_frame: 1
   kwargs:
     world_name: "world_0.world"
     gui: false
     verbose: false
     max_step: 400
     time_step: 0.2
+    laser_clip: 2
     slack_reward: 0
-    collision_reward: 0
+    collision_reward: -0.1
     failure_reward: -20
     success_reward: 20
     init_position: [-2, 2, 1.57]
@@ -19,16 +20,17 @@ env_config:
 
 training_config:
   algorithm: "TD3"
-  network: "cnn2d_deep"
+  network: "mlp"
   buffer_size: 200000
   actor_lr: 0.00002
   critic_lr: 0.00005
   num_layers: 2
-  hidden_size: 256
+  hidden_size: 512
   exploration_noise_start: 0.2
   exploration_noise_end: 0.05
   exploration_ratio: 1
-  pre_collect: 10000
+  pre_collect: 4096
+  log_intervals: 100
 
   policy_args:
     tau: 0.005
@@ -41,17 +43,17 @@ training_config:
     estimation_step: 4
 
   training_args:
-    max_epoch: 500
-    step_per_epoch: 2000
-    collect_per_step: 5
-    update_per_step: 1
+    max_epoch: 200
+    step_per_epoch: 4096
+    collect_per_step: 1024
+    update_per_step: 1024
     batch_size: 128
 
 condor_config:
   test_object: "local"  # or "dwa"
-  num_actor: 100
-  # worlds: [28]
-  worlds: [28, 48, 107, 155, 177]
+  num_actor: 20
+  worlds: [177]
+  # worlds: [28, 48, 107, 155, 177]
   # worlds: [280, 299, 80, 155, 119, 172, 161, 82, 255, 206, 164, 137, 177, 158, 204, 110, 241, 167, 293, 51, 101, 36, 73, 28, 207, 295, 275, 136, 46, 288, 213, 151, 156, 71, 61, 192, 160, 9, 260, 271, 35, 297, 58, 55, 220, 107, 174, 91, 38, 141]
   test_worlds: [280, 299, 80, 155, 119, 172, 161, 82, 255, 206, 164, 137, 177, 158, 204, 110, 241, 167, 293, 51, 101, 36, 73, 28, 207, 295, 275, 136, 46, 288, 213, 151, 156, 71, 61, 192, 160, 9, 260, 271, 35, 297, 58, 55, 220, 107, 174, 91, 38, 141]
   num_trials: 20

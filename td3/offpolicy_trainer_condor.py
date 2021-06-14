@@ -109,8 +109,8 @@ def offpolicy_trainer_condor(
                 n_step = sum([r["ep_len"] for r in result])
                 global_step += n_step 
                 n_step = np.clip(n_step, 10, 5000)
-                for i in range(update_per_step * min(n_step // collect_per_step, t.total - t.n)):
-                # for i in range(update_per_step):# * min(n_step // collect_per_step, t.total - t.n)):
+                # for i in range(update_per_step * min(n_step // collect_per_step, t.total - t.n)):
+                for i in range(update_per_step):
                     losses = policy.update(batch_size, train_collector.buffer)
                     update_step += 1
                     if len(result) > 0:

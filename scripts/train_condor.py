@@ -21,7 +21,7 @@ args = parser.parse_args()
 CONFIG_PATH = args.config_path
 
 if not os.getenv('BUFFER_PATH'):
-    hash_code = uuid.uuid4().hex
+    hash_code = uuid.uuid4().hex[:8]
     buffer_path = os.path.join(os.environ['HOME'], hash_code)
     os.environ['BUFFER_PATH'] = buffer_path
 else:
@@ -53,10 +53,11 @@ if not args.local_update:
     cfile.write(common_command)
 
     run_command = "\
+        arguments  = %s\n\
         output     = %s/out.txt\n\
         log        = %s/log.txt\n\
         error      = %s/err.txt\n\
-        queue 1\n\n" % (out_path, out_path, out_path)
+        queue 1\n\n" % (args.config_path, out_path, out_path, out_path)
     cfile.write(run_command)
 
     cfile.close()

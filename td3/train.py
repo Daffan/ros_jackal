@@ -92,7 +92,7 @@ def initialize_policy(config, env):
     action_shape = env.action_space.shape
     action_space_low = env.action_space.low
     action_space_high = env.action_space.high
-    devices = GPUtil.getAvailable(order = 'first', limit = 1, maxLoad = 0.8, maxMemory = 0.8, includeNan=False, excludeID=[], excludeUUID=[])
+    devices = GPUtil.getAvailable(order = 'first', limit = 1, maxLoad = 0.9, maxMemory = 0.9, includeNan=False, excludeID=[], excludeUUID=[])
     device = "cuda:%d" %(devices[0]) if len(devices) > 0 else "cpu"
 
     if training_config["network"] == "mlp":
