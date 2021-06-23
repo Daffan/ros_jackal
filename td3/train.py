@@ -94,6 +94,7 @@ def initialize_policy(config, env):
     action_space_high = env.action_space.high
     devices = GPUtil.getAvailable(order = 'first', limit = 1, maxLoad = 0.9, maxMemory = 0.9, includeNan=False, excludeID=[], excludeUUID=[])
     device = "cuda:%d" %(devices[0]) if len(devices) > 0 else "cpu"
+    print("    >>>> Running on device %s" %(device))
 
     if training_config["network"] == "mlp":
         make_net = lambda act_shape: MLP(

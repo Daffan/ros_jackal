@@ -51,9 +51,10 @@ class Collector(object):
     def buffer_expand(self, traj):
         for i in range(len(traj)):
             obs_next = traj[i+1][0] if i < len(traj)-1 else traj[i][0]
+            world = int(traj[i][-1]['world'].split("_")[-1].split(".")[0])
             self.buffer.add(traj[i][0], traj[i][1], \
                             traj[i][2], traj[i][3], \
-                            obs_next, {"1":1})
+                            obs_next, {"world": world})
     
     def natural_keys(self, text):
         return int(re.split(r'(\d+)', text)[1])
