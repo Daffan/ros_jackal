@@ -16,20 +16,32 @@ from envs.wrappers import ShapingRewardWrapper
 
 def main():
     env = gym.make(
+        id='dwa_param_continuous_laser-v0',
+        base_local_planner="eband_local_planner/EBandPlannerROS",
+        param_init=[0.5],
+        param_list=["EBandPlannerROS/max_vel_lin"],
+        world_name='BARN/world_0.world',
+        gui=True,
+        init_position=[-2, 2, np.pi/2],
+        goal_position=[0, 10, 0]
+    )
+    """
+    env = gym.make(
         id='dwa_param_continuous_laser-v0', 
         param_init=[0.5, 1.57, 6, 20, 0.75, 1, 0.3],
-        param_list=["max_vel_x", 
-                      "max_vel_theta", 
-                      "vx_samples", 
-                      "vtheta_samples", 
-                      "path_distance_bias", 
-                      "goal_distance_bias", 
+        param_list=["TrajectoryPlannerROS/max_vel_x", 
+                      "TrajectoryPlannerROS/max_vel_theta", 
+                      "TrajectoryPlannerROS/vx_samples", 
+                      "TrajectoryPlannerROS/vtheta_samples", 
+                      "TrajectoryPlannerROS/path_distance_bias", 
+                      "TrajectoryPlannerROS/goal_distance_bias", 
                       "inflation_radius"],
         world_name='BARN/world_0.world',
         gui=True,
         init_position=[-2, 2, np.pi/2],
         goal_position=[0, 10, 0]
     )
+    """
     """
     env = gym.make(
         id='motion_control_continuous_laser-v0', 

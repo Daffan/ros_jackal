@@ -16,6 +16,7 @@ From: ros:melodic
     git clone https://github.com/jackal/jackal.git
     git clone https://github.com/jackal/jackal_simulator.git
     git clone https://github.com/jackal/jackal_desktop.git
+    git clone https://github.com/utexas-bwi/eband_local_planner.git
 
     source /opt/ros/melodic/setup.bash
     cd ..; catkin_make

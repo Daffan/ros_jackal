@@ -76,6 +76,7 @@ class Collector(object):
         times = []
         while steps < n_step:
             time.sleep(1)
+            np.random.shuffle(self.ids)
             for id in self.ids:
                 base = join(BUFFER_PATH, 'actor_%d' %(id))
                 try:
@@ -87,15 +88,16 @@ class Collector(object):
                     try:
                         target = join(base, p)
                         if os.path.getsize(target) > 0:
-                            with open(target, 'rb') as f:
-                                traj = pickle.load(f)
-                                ep_rew.append(sum([t[2] for t in traj]))
-                                ep_len.append(len(traj))
-                                success.append(float(traj[-1][-1]['success']))
-                                world.append(traj[-1][-1]['world'])
-                                times.append(traj[-1][-1]['time'])
-                                self.buffer_expand(traj)
-                                steps += len(traj)
+                            if steps < n_step:  # if reach the target steps, don't put the experinece into the buffer
+                                with open(target, 'rb') as f:
+                                    traj = pickle.load(f)
+                                    ep_rew.append(sum([t[2] for t in traj]))
+                                    ep_len.append(len(traj))
+                                    success.append(float(traj[-1][-1]['success']))
+                                    world.append(traj[-1][-1]['world'])
+                                    times.append(traj[-1][-1]['time'])
+                                    self.buffer_expand(traj)
+                                    steps += len(traj)
                             os.remove(join(base, p))
                     except:
                         logging.exception('')

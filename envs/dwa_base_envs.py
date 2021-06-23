@@ -17,6 +17,7 @@ from envs.move_base import MoveBase
 class DWABase(gym.Env):
     def __init__(
         self,
+        base_local_planner="base_local_planner/TrajectoryPlannerROS",
         world_name="jackal_world.world",
         gui=False,
         init_position=[0, 0, 0],
@@ -32,6 +33,7 @@ class DWABase(gym.Env):
         """
         super().__init__()
 
+        self.base_local_planner = base_local_planner
         self.world_name = world_name
         self.gui = gui
         self.init_position = init_position
@@ -54,7 +56,8 @@ class DWABase(gym.Env):
                                                 launch_file,
                                                 'world_name:=' + world_name,
                                                 'gui:=' + ("true" if gui else "false"),
-                                                'verbose:=' + ("true" if verbose else "false")
+                                                'verbose:=' + ("true" if verbose else "false"),
+                                                'base_local_planner:=' + base_local_planner
                                                 ])
         time.sleep(10)  # sleep to wait until the gazebo being created
 
@@ -63,8 +66,8 @@ class DWABase(gym.Env):
         rospy.set_param('/use_sim_time', True)
 
         self._set_start_goal_BARN(self.world_name)  # overwrite the starting goal if use BARN dataset
-        self.gazebo_sim = GazeboSimulation(init_position = self.init_position)
-        self.move_base = MoveBase(goal_position = self.goal_position)
+        self.gazebo_sim = GazeboSimulation(init_position=self.init_position)
+        self.move_base = MoveBase(goal_position=self.goal_position, base_local_planner=base_local_planner)
 
         # Not implemented
         self.action_space = None

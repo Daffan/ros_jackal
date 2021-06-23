@@ -126,9 +126,10 @@ def transform_gp(gp, X, Y, PSI):
 
 class MoveBase():
 
-    def __init__(self, goal_position = [6, 6, 0]):
+    def __init__(self, goal_position = [6, 6, 0], base_local_planner="base_local_planner/TrajectoryPlannerROS"):
         self.goal_position = goal_position
-        self.planner_client = dynamic_reconfigure.client.Client('move_base/TrajectoryPlannerROS')
+        self.base_local_planner = base_local_planner.split("/")[-1]
+        self.planner_client = dynamic_reconfigure.client.Client('/move_base/' + self.base_local_planner)
         self.local_costmap_client = dynamic_reconfigure.client.Client('move_base/local_costmap/inflater_layer')
         self.global_costmap_client = dynamic_reconfigure.client.Client('move_base/global_costmap/inflater_layer')
         self.nav_as = actionlib.SimpleActionClient('/move_base', MoveBaseAction)
@@ -139,18 +140,18 @@ class MoveBase():
 
         self.robot_config = Robot_config()
         self.sub_robot = rospy.Subscriber("/odometry/filtered", Odometry, self.robot_config.get_robot_status)
-        self.sub_gp = rospy.Subscriber("/move_base/TrajectoryPlannerROS/global_plan", Path, self.robot_config.get_global_path)
+        self.sub_gp = rospy.Subscriber("/move_base/" + self.base_local_planner + "/global_plan", Path, self.robot_config.get_global_path)
         self.sub_vel = rospy.Subscriber("/jackal_velocity_controller/cmd_vel", Twist, self.robot_config.vel_monitor)
 
     def set_navi_param(self, param_name, param):
 
         if param_name != 'inflation_radius':
-            self.planner_client.update_configuration({param_name: param})
-            rospy.set_param('/move_base/TrajectoryPlannerROS/' + param_name, param)
+            self.planner_client.update_configuration({param_name.split("/")[-1]: param})
+            rospy.set_param('/move_base/' + param_name, param)
 
             if param_name == 'max_vel_theta':
                 self.planner_client.update_configuration({'min_vel_theta': -param})
-                rospy.set_param('/move_base/TrajectoryPlannerROS/' + 'min_vel_theta', -param)
+                rospy.set_param('/move_base/' + 'min_vel_theta', -param)
         else:
             self.global_costmap_client.update_configuration({param_name: param})
             self.local_costmap_client.update_configuration({param_name: param})
@@ -159,7 +160,7 @@ class MoveBase():
 
     def get_navi_param(self, param_name):
         if param_name != 'inflation_radius':
-            param = rospy.get_param('/move_base/TrajectoryPlannerROS/' + param_name)
+            param = rospy.get_param('/move_base/' + param_name)
         else:
             param = rospy.get_param('/move_base/global_costmap/inflater_layer/' + param_name)
         return param

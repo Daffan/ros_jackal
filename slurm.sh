@@ -9,13 +9,13 @@
 #SBATCH --mail-type=END,FAIL,REQUEUE                                      
 
 ### Node info
-#SBATCH --partition dgx                        # Queue name - current options are titans and dgx
+#SBATCH --partition titans                        # Queue name - current options are titans and dgx
 #SBATCH --nodes=1                                                            # Always set to 1 when using the cluster
 #SBATCH --ntasks-per-node=1                                        # Number of tasks per node
-#SBATCH --time 1:00:00                                                     # Run time (hh:mm:ss)
+#SBATCH --time 10:00:00                                                     # Run time (hh:mm:ss)
 
 #SBATCH --gres=gpu:1                                                       # Number of gpus needed
-#SBATCH --mem=5G                                                         # Memory requirements
+#SBATCH --mem=4G                                                         # Memory requirements
 #SBATCH --cpus-per-task=8                                              # Number of cpus needed per task
 
-./executable/run_central_learner.sh configs/motion.yaml
+./executable/run_central_learner.sh configs/laser.yaml /u/zifan/local_buffer1

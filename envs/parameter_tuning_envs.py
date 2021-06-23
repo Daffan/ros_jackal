@@ -7,25 +7,26 @@ from envs.dwa_base_envs import DWABase, DWABaseLaser, DWABaseCostmap
 
 # A contant dict that define the ranges of parameters
 RANGE_DICT = {
-    'max_vel_x': [0.2, 2],
-    'max_vel_theta': [0.314, 3.14],
-    'vx_samples': [4, 12],
-    'vtheta_samples': [8, 40],
-    'path_distance_bias': [0.1, 1.5],
-    'goal_distance_bias': [0.1, 2],
-    'inflation_radius': [0.1, 0.6]
+    'TrajectoryPlannerROS/max_vel_x': [0.2, 2],
+    'TrajectoryPlannerROS/max_vel_theta': [0.314, 3.14],
+    'TrajectoryPlannerROS/vx_samples': [4, 12],
+    'TrajectoryPlannerROS/vtheta_samples': [8, 40],
+    'TrajectoryPlannerROS/path_distance_bias': [0.1, 1.5],
+    'TrajectoryPlannerROS/goal_distance_bias': [0.1, 2],
+    'inflation_radius': [0.1, 0.6],
+    'EBandPlannerROS/max_vel_lin': [0.2, 2]
 }
 
 class DWAParamContinuous(DWABase):
     def __init__(
         self, 
         param_init=[0.5, 1.57, 6, 20, 0.75, 1, 0.3],
-        param_list=['max_vel_x', 
-                    'max_vel_theta', 
-                    'vx_samples', 
-                    'vtheta_samples', 
-                    'path_distance_bias', 
-                    'goal_distance_bias', 
+        param_list=['TrajectoryPlannerROS/max_vel_x', 
+                    'TrajectoryPlannerROS/max_vel_theta', 
+                    'TrajectoryPlannerROS/vx_samples', 
+                    'TrajectoryPlannerROS/vtheta_samples', 
+                    'TrajectoryPlannerROS/path_distance_bias', 
+                    'TrajectoryPlannerROS/goal_distance_bias', 
                     'inflation_radius'],
         **kwargs
     ):

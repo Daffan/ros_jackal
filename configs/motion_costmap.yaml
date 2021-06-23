@@ -19,10 +19,10 @@ env_config:
 
 training_config:
   algorithm: "TD3"
-  network: "cnn2d"
+  network: "cnn2d_deep"
   buffer_size: 200000
-  actor_lr: 0.00002
-  critic_lr: 0.00005
+  actor_lr: 0.00001
+  critic_lr: 0.00002
   num_layers: 2
   hidden_size: 256
   exploration_noise_start: 0.2

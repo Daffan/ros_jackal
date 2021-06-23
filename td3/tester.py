@@ -26,6 +26,7 @@ def load_model(policy):
     state_dict = torch.load(model_path, map_location="cpu")
     policy.load_state_dict(state_dict)
     policy = policy.float()
+    policy.set_exp_noise(None)
     return policy
 
 def main(args):
