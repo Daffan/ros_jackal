@@ -146,7 +146,7 @@ class DWABase(gym.Env):
 
     def _get_done(self):
         success = self._get_success()
-        done = success or self.step_count >= self.max_step or self._get_flip_status()
+        done = success or self.step_count >= self.max_step # or self._get_flip_status()
         return done
 
     def _get_flip_status(self):

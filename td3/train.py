@@ -26,7 +26,7 @@ from offpolicy_trainer import offpolicy_trainer
 from offpolicy_trainer_condor import offpolicy_trainer_condor
 from collector import Collector as CondorCollector
 from infomation_envs import InfoEnv
-from model import Cnn1d, Cnn2d, Cnn2dDeep, Critic  # comtumized Critic to cover the the CNN case
+from model import Cnn1d, Cnn2dTest, Cnn2d, Cnn2dDeep, Critic  # comtumized Critic to cover the the CNN case
 
 def initialize_config(config_path, save_path):
     # Load the config files
@@ -92,7 +92,7 @@ def initialize_policy(config, env):
     action_shape = env.action_space.shape
     action_space_low = env.action_space.low
     action_space_high = env.action_space.high
-    devices = GPUtil.getAvailable(order = 'first', limit = 1, maxLoad = 0.9, maxMemory = 0.9, includeNan=False, excludeID=[], excludeUUID=[])
+    devices = GPUtil.getAvailable(order = 'first', limit = 1, maxLoad = 0.8, maxMemory = 0.8, includeNan=False, excludeID=[], excludeUUID=[])
     device = "cuda:%d" %(devices[0]) if len(devices) > 0 else "cpu"
     print("    >>>> Running on device %s" %(device))
 
@@ -114,13 +114,19 @@ def initialize_policy(config, env):
     elif training_config["network"] == "cnn2d":
         make_net =  lambda act_shape: Cnn2d(
             action_shape=act_shape,
-            num_frames=config["env_config"]["stack_frame"],
+            num_frames=1, # config["env_config"]["stack_frame"],
             device=device
         )
     elif training_config["network"] == "cnn2d_deep":
         make_net =  lambda act_shape: Cnn2dDeep(
             action_shape=act_shape,
             num_frames=config["env_config"]["stack_frame"],
+            device=device
+        )
+    elif training_config["network"] == "cnn2d_test":
+        make_net =  lambda act_shape: Cnn2dTest(
+            action_shape=act_shape,
+            num_frames=3, # config["env_config"]["stack_frame"],
             device=device
         )
     else:

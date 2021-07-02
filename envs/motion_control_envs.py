@@ -15,7 +15,7 @@ class MotionControlContinuous(DWABase):
         self.params = None
         # same as the parameters to tune
         self.action_space = Box(
-            low=np.array([0.1, -3.14]),
+            low=np.array([-1, -3.14]),
             high=np.array([2, 3.14]),
             dtype=np.float32
         )

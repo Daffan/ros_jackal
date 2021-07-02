@@ -140,7 +140,8 @@ class MoveBase():
 
         self.robot_config = Robot_config()
         self.sub_robot = rospy.Subscriber("/odometry/filtered", Odometry, self.robot_config.get_robot_status)
-        self.sub_gp = rospy.Subscriber("/move_base/" + self.base_local_planner + "/global_plan", Path, self.robot_config.get_global_path)
+        # self.sub_gp = rospy.Subscriber("/move_base/" + self.base_local_planner + "/global_plan", Path, self.robot_config.get_global_path)
+        self.sub_gp = rospy.Subscriber("/move_base/NavfnROS/plan", Path, self.robot_config.get_global_path)
         self.sub_vel = rospy.Subscriber("/jackal_velocity_controller/cmd_vel", Twist, self.robot_config.vel_monitor)
 
     def set_navi_param(self, param_name, param):
