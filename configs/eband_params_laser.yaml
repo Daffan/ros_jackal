@@ -1,18 +1,21 @@
 env_config:
   use_condor: True
-  env_id: "dwa_param_continuous_costmap-v0"
+  env_id: "dwa_param_continuous_laser-v0"
   seed: 13
   shaping_reward: True
   stack_frame: 1
   kwargs:
-    param_init: [0.5, 1.57, 6, 20, 0.75, 1, 0.3]
-    param_list: ["TrajectoryPlannerROS/max_vel_x", 
-                 "TrajectoryPlannerROS/max_vel_theta", 
-                 "TrajectoryPlannerROS/vx_samples",
-                 "TrajectoryPlannerROS/vtheta_samples",
-                 "TrajectoryPlannerROS/path_distance_bias",
-                 "TrajectoryPlannerROS/goal_distance_bias", 
-                 "inflation_radius"]
+    param_init: [0.75, 1, 0.75, 1.0, 2.0, 10, 0.3]
+    param_list: [
+      "EBandPlannerROS/max_vel_lin",
+      "EBandPlannerROS/max_vel_th",
+      "EBandPlannerROS/virtual_mass",
+      "EBandPlannerROS/eband_internal_force_gain",
+      "EBandPlannerROS/eband_external_force_gain",
+      "EBandPlannerROS/costmap_weight",
+      "inflation_radius"
+    ]
+    base_local_planner: "eband_local_planner/EBandPlannerROS"
     world_name: "world_0.world"
     gui: false
     verbose: false
@@ -27,12 +30,12 @@ env_config:
 
 training_config:
   algorithm: "TD3"
-  network: "cnn2d_deep"
+  network: "mlp"
   buffer_size: 200000
   actor_lr: 0.00001
   critic_lr: 0.00002
   num_layers: 2
-  hidden_size: 256
+  hidden_size: 512
   exploration_noise_start: 0.2
   exploration_noise_end: 0.05
   exploration_ratio: 1
@@ -50,7 +53,7 @@ training_config:
     estimation_step: 4
 
   training_args:
-    max_epoch: 100
+    max_epoch: 200
     step_per_epoch: 4096
     collect_per_step: 1024
     update_per_step: 1024

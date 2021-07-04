@@ -19,6 +19,7 @@ class MotionControlContinuous(DWABase):
             high=np.array([2, 3.14]),
             dtype=np.float32
         )
+        self.move_base = self.launch_move_base(goal_position=self.goal_position, base_local_planner=self.base_local_planner)
 
     def reset(self):
         """reset the environment without setting the goal

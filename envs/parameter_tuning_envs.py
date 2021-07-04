@@ -14,7 +14,12 @@ RANGE_DICT = {
     'TrajectoryPlannerROS/path_distance_bias': [0.1, 1.5],
     'TrajectoryPlannerROS/goal_distance_bias': [0.1, 2],
     'inflation_radius': [0.1, 0.6],
-    'EBandPlannerROS/max_vel_lin': [0.2, 2]
+    'EBandPlannerROS/max_vel_lin': [0.2, 2],
+    'EBandPlannerROS/max_vel_th': [0.314, 3.14],
+    "EBandPlannerROS/virtual_mass": [0.2, 1.3],
+    "EBandPlannerROS/eband_internal_force_gain": [0.2, 1.8],
+    "EBandPlannerROS/eband_external_force_gain": [0.4, 3.6],
+    "EBandPlannerROS/costmap_weight": [2, 18]
 }
 
 class DWAParamContinuous(DWABase):

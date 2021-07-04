@@ -114,7 +114,7 @@ def initialize_policy(config, env):
     elif training_config["network"] == "cnn2d":
         make_net =  lambda act_shape: Cnn2d(
             action_shape=act_shape,
-            num_frames=1, # config["env_config"]["stack_frame"],
+            num_frames=config["env_config"]["stack_frame"],
             device=device
         )
     elif training_config["network"] == "cnn2d_deep":
@@ -126,7 +126,7 @@ def initialize_policy(config, env):
     elif training_config["network"] == "cnn2d_test":
         make_net =  lambda act_shape: Cnn2dTest(
             action_shape=act_shape,
-            num_frames=3, # config["env_config"]["stack_frame"],
+            num_frames=3 * config["env_config"]["stack_frame"],
             device=device
         )
     else:

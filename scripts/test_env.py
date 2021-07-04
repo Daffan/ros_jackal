@@ -15,13 +15,14 @@ import envs.registration
 from envs.wrappers import ShapingRewardWrapper
 
 def main():
+    
     env = gym.make(
         id='dwa_param_continuous_laser-v0',
         base_local_planner="eband_local_planner/EBandPlannerROS",
-        param_init=[0.5],
+        param_init=[0.75],
         param_list=["EBandPlannerROS/max_vel_lin"],
-        world_name='BARN/world_0.world',
-        gui=True,
+        world_name='BARN/world_114.world',
+        gui=False,
         init_position=[-2, 2, np.pi/2],
         goal_position=[0, 10, 0]
     )

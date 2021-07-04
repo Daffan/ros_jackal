@@ -50,14 +50,13 @@ class DWABase(gym.Env):
         rospack = rospkg.RosPack()
         self.BASE_PATH = rospack.get_path('jackal_helper')
         world_name = join(self.BASE_PATH, "worlds", world_name)
-        launch_file = join(self.BASE_PATH, 'launch', 'ros_jackal_launch.launch')
+        launch_file = join(self.BASE_PATH, 'launch', 'gazebo_launch.launch')
 
         self.gazebo_process = subprocess.Popen(['roslaunch', 
                                                 launch_file,
                                                 'world_name:=' + world_name,
                                                 'gui:=' + ("true" if gui else "false"),
                                                 'verbose:=' + ("true" if verbose else "false"),
-                                                'base_local_planner:=' + base_local_planner
                                                 ])
         time.sleep(10)  # sleep to wait until the gazebo being created
 
@@ -67,17 +66,29 @@ class DWABase(gym.Env):
 
         self._set_start_goal_BARN(self.world_name)  # overwrite the starting goal if use BARN dataset
         self.gazebo_sim = GazeboSimulation(init_position=self.init_position)
-        self.move_base = MoveBase(goal_position=self.goal_position, base_local_planner=base_local_planner)
+        # self.move_base = self.launch_move_base(goal_position=self.goal_position, base_local_planner=self.base_local_planner)
 
         # Not implemented
         self.action_space = None
         self.observation_space = None
+        self.move_base = None
         self.reward_range = (
             min(slack_reward, failure_reward), 
             success_reward
         )
 
         self.step_count = 0
+
+    def launch_move_base(self, goal_position, base_local_planner):
+        rospack = rospkg.RosPack()
+        self.BASE_PATH = rospack.get_path('jackal_helper')
+        launch_file = join(self.BASE_PATH, 'launch', 'move_base_launch.launch')
+        self.move_base_process = subprocess.Popen(['roslaunch', launch_file, 'base_local_planner:=' + base_local_planner])
+        move_base = MoveBase(goal_position=goal_position, base_local_planner=base_local_planner)
+        return move_base
+
+    def kill_move_base(self):
+        os.system("pkill -9 move_base")
 
     def seed(self, seed):
         np.random.seed(seed)
@@ -88,15 +99,21 @@ class DWABase(gym.Env):
         self.step_count=0
         # Reset robot in odom frame clear_costmap
         self.gazebo_sim.unpause()
-        self.move_base.reset_robot_in_odom()
         # Resets the state of the environment and returns an initial observation
         self.gazebo_sim.reset()
-        self.move_base.set_global_goal()
-        self._clear_costmap()
+        self._reset_move_base()
         self.start_time = rospy.get_time()
         obs = self._get_observation()
         self.gazebo_sim.pause()
         return obs
+
+    def _reset_move_base(self):
+        # reset the move_base
+        self.kill_move_base()
+        self.move_base = self.launch_move_base(goal_position=self.goal_position, base_local_planner=self.base_local_planner)
+        self.move_base.reset_robot_in_odom()
+        self._clear_costmap()
+        self.move_base.set_global_goal()
 
     def _clear_costmap(self):
         self.move_base.clear_costmap()
@@ -138,7 +155,7 @@ class DWABase(gym.Env):
 
     def _get_reward(self):
         rew = self.slack_reward
-        if self.step_count >= self.max_step or self._get_flip_status():
+        if self.step_count >= self.max_step:  # or self._get_flip_status():
             rew = self.failure_reward
         if self._get_success():
             rew = self.success_reward
@@ -274,17 +291,24 @@ class DWABaseCostmap(DWABase):
         ]
         obstacles_index = np.where(occupancy_grid == 100)
         path_index = np.where(occupancy_grid == -100)
-        occupancy_grid[:, :] = 0.5
-        occupancy_grid[obstacles_index] = 1
-        occupancy_grid[path_index] = 0
+        occupancy_grid[:, :] = 1  # 0.5 open
+        occupancy_grid[obstacles_index] = 3  # 1 obstacles 
+        occupancy_grid[path_index] = 0  # 0 path
         psi = self.move_base.robot_config.PSI
         occupancy_grid = self.rotate_image(occupancy_grid, psi/np.pi*180)
         w, h = occupancy_grid.shape[0], occupancy_grid.shape[1]
         occupancy_grid = occupancy_grid[w//2-42:w//2+42, h//2-42:h//2+42]
         occupancy_grid = occupancy_grid.reshape(84, 84)
         assert occupancy_grid.shape == (84, 84), "x, y, z: %d, %d, %d; X, Y: %d, %d" %(occupancy_grid.shape[0], occupancy_grid.shape[1], occupancy_grid.shape[2], X, Y)
-        
-        return occupancy_grid
+        recolor_map = np.array(
+        [
+            [255, 0, 0],
+            [0, 255, 0],
+            [0, 0, 255],
+            [0, 0, 255],
+        ], dtype=np.uint8,
+        )
+        return recolor_map[(occupancy_grid).astype(int)]  # occupancy_grid
    
     def rotate_image(self, image, angle):
         """
