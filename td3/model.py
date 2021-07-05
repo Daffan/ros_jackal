@@ -6,6 +6,7 @@ from torch import nn
 
 from tianshou.data import to_torch, to_torch_as
 from tianshou.utils.net import continuous
+from resnet import resnet18
 
 class Cnn2d(nn.Module):
 
@@ -164,6 +165,37 @@ class Cnn2dDeep(nn.Module):
             action_features = self.action_embedding(a)
             features = torch.cat([features, action_features], dim=1)
         features = self.fc2(features)
+
+        return features, state
+
+
+class Resnet18(nn.Module):
+    def __init__(self, action_shape=0, num_frames=3, device="cpu"):
+        super().__init__()
+        self.device = device
+        self.resnet = resnet18(pretrained=True)
+        action_shape = np.prod(action_shape)
+        self.fc = nn.Sequential(
+            nn.Linear(512 + action_shape, 512),
+            nn.ReLU(),
+            nn.Linear(512, 256),
+            nn.ReLU()
+        )
+
+    def forward(
+            self,
+            s: Union[np.ndarray, torch.Tensor],
+            a: Optional[Union[np.ndarray, torch.Tensor]] = None,
+            state=None,
+            info: Dict[str, Any]={},
+        ) -> torch.Tensor:
+        s = to_torch(s, device=self.device, dtype=torch.float32)
+        s = s.reshape(s.size(0), -1, 224, 224)
+
+        features = self.resnet(s)
+        if a is not None:
+            features = torch.cat([features, a], dim=1)
+        features = self.fc(features)
 
         return features, state
 

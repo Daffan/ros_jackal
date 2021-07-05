@@ -146,7 +146,7 @@ class DWABase(gym.Env):
 
     def _get_done(self):
         success = self._get_success()
-        done = success or self.step_count >= self.max_step # or self._get_flip_status()
+        done = success or self.step_count >= self.max_step or self._get_flip_status()
         return done
 
     def _get_flip_status(self):
@@ -260,22 +260,22 @@ class DWABaseCostmap(DWABase):
         global_path = self.move_base.robot_config.global_path
         if len(global_path) > 0:
             path_index = [
-                self._to_image_index(*tuple(coordinate), padding=PADDING)
+                self._to_image_index(*tuple(coordinate), padding=PADDING, size=800)
                 for coordinate in global_path
             ]
             for p in path_index:
                 occupancy_grid[p[1], p[0]] = -100
 
         X, Y = self.move_base.robot_config.X, self.move_base.robot_config.Y  # robot position
-        X, Y = self._to_image_index(X, Y, padding=PADDING)
+        X, Y = self._to_image_index(X, Y, padding=PADDING, size=800)
         occupancy_grid = occupancy_grid[
             Y - PADDING:Y + PADDING,
             X - PADDING:X + PADDING
         ]
-        obstacles_index = np.where(occupancy_grid == 100)
+        obstacles_index = np.where(occupancy_grid > 95)
         path_index = np.where(occupancy_grid == -100)
-        occupancy_grid[:, :] = 0.5
-        occupancy_grid[obstacles_index] = 1
+        occupancy_grid[:, :] = 1
+        occupancy_grid[obstacles_index] = 10
         occupancy_grid[path_index] = 0
         psi = self.move_base.robot_config.PSI
         occupancy_grid = self.rotate_image(occupancy_grid, psi/np.pi*180)
@@ -284,7 +284,24 @@ class DWABaseCostmap(DWABase):
         occupancy_grid = occupancy_grid.reshape(84, 84)
         assert occupancy_grid.shape == (84, 84), "x, y, z: %d, %d, %d; X, Y: %d, %d" %(occupancy_grid.shape[0], occupancy_grid.shape[1], occupancy_grid.shape[2], X, Y)
         
-        return occupancy_grid
+        recolor_map = np.array(
+        [
+            [1, 0, 0],
+            [0, 1, 0],
+            [0, 1, 0],
+            [0, 1, 0],
+            [0, 1, 0],
+            [0, 1, 0],
+            [0, 0, 1],
+            [0, 0, 1],
+            [0, 0, 1],
+            [0, 0, 1],
+            [0, 0, 1],
+            [0, 0, 1],
+        ],
+        dtype=np.uint8,
+        )
+        return recolor_map[(occupancy_grid).astype(int)]
    
     def rotate_image(self, image, angle):
         """
@@ -354,9 +371,9 @@ class DWABaseCostmap(DWABase):
 
         return result
 
-    def _to_image_index(self, x, y, padding=42):
-        X, Y = int(x*20) + 400 + padding, int(y*20) + 400 + padding
-        X, Y = min(799 + padding, X), min(799 + padding, Y)
+    def _to_image_index(self, x, y, padding=42, size=800):
+        X, Y = int(x * size // 40) + size // 2 + padding, int(y * size // 40) + size // 2 + padding
+        X, Y = min(size - 1 + padding, X), min(size - 1 + padding, Y)
         X, Y = max(padding, X), max(padding, Y)
         return X, Y
 
@@ -378,3 +395,68 @@ class DWABaseCostmap(DWABase):
         plt.imshow(costmap, origin="bottomleft")
         plt.show(block=False)
         plt.pause(.5)
+
+
+class DWABaseCostmapResnet(DWABaseCostmap):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.observation_space = Box(
+            low=-1,
+            high=10,
+            shape=(3, 224, 224),
+            dtype=np.float32
+        )
+
+    def _get_costmap(self):
+        PADDING = 160
+        SIZE = 1600
+        costmap = self.move_base.get_costmap().data
+        costmap = np.array(costmap, dtype=float).reshape(SIZE, SIZE)
+        # padding to prevent out of index
+        occupancy_grid = np.zeros((SIZE + PADDING * 2, SIZE + PADDING * 2), dtype=float)
+        occupancy_grid[PADDING:SIZE + PADDING, PADDING:SIZE + PADDING] = costmap
+        
+        global_path = self.move_base.robot_config.global_path
+        if len(global_path) > 0:
+            path_index = [
+                self._to_image_index(*tuple(coordinate), padding=PADDING, size=SIZE)
+                for coordinate in global_path
+            ]
+            for p in path_index:
+                occupancy_grid[p[1], p[0]] = -100
+
+        X, Y = self.move_base.robot_config.X, self.move_base.robot_config.Y  # robot position
+        X, Y = self._to_image_index(X, Y, padding=PADDING, size=SIZE)
+        occupancy_grid = occupancy_grid[
+            Y - PADDING:Y + PADDING,
+            X - PADDING:X + PADDING
+        ]
+        obstacles_index = np.where(occupancy_grid == 100)
+        path_index = np.where(occupancy_grid == -100)
+        occupancy_grid[:, :] = 1
+        occupancy_grid[obstacles_index] = 10
+        occupancy_grid[path_index] = 0
+        psi = self.move_base.robot_config.PSI
+        occupancy_grid = self.rotate_image(occupancy_grid, psi/np.pi*180)
+        w, h = occupancy_grid.shape[0], occupancy_grid.shape[1]
+        occupancy_grid = occupancy_grid[w//2-112:w//2+112, h//2-112:h//2+112]
+        occupancy_grid = occupancy_grid.reshape(224, 224)
+        assert occupancy_grid.shape == (224, 224), "x, y, z: %d, %d, %d; X, Y: %d, %d" %(occupancy_grid.shape[0], occupancy_grid.shape[1], occupancy_grid.shape[2], X, Y)
+        
+        recolor_map = np.array(
+        [
+            [1, 0, 0],
+            [0, 1, 0],
+            [0, 1, 0],
+            [0, 1, 0],
+            [0, 1, 0],
+            [0, 1, 0],
+            [0, 0, 1],
+            [0, 0, 1],
+            [0, 0, 1],
+            [0, 0, 1],
+            [0, 0, 1],
+        ],
+        dtype=np.uint8,
+        )
+        return recolor_map[(occupancy_grid).astype(int)]

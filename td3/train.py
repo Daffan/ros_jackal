@@ -26,7 +26,7 @@ from offpolicy_trainer import offpolicy_trainer
 from offpolicy_trainer_condor import offpolicy_trainer_condor
 from collector import Collector as CondorCollector
 from infomation_envs import InfoEnv
-from model import Cnn1d, Cnn2dTest, Cnn2d, Cnn2dDeep, Critic  # comtumized Critic to cover the the CNN case
+from model import Cnn1d, Cnn2dTest, Cnn2d, Cnn2dDeep, Resnet18, Critic  # comtumized Critic to cover the the CNN case
 
 def initialize_config(config_path, save_path):
     # Load the config files
@@ -125,6 +125,12 @@ def initialize_policy(config, env):
         )
     elif training_config["network"] == "cnn2d_test":
         make_net =  lambda act_shape: Cnn2dTest(
+            action_shape=act_shape,
+            num_frames=3, # config["env_config"]["stack_frame"],
+            device=device
+        )
+    elif training_config["network"] == "resnet18":
+        make_net =  lambda act_shape: Resnet18(
             action_shape=act_shape,
             num_frames=3, # config["env_config"]["stack_frame"],
             device=device

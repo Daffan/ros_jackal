@@ -5,7 +5,7 @@ import numpy as np
 import rospy
 from geometry_msgs.msg import Twist
 
-from envs.dwa_base_envs import DWABase, DWABaseLaser, DWABaseCostmap
+from envs.dwa_base_envs import DWABase, DWABaseLaser, DWABaseCostmap, DWABaseCostmapResnet
 
 class MotionControlContinuous(DWABase):
     def __init__(self, collision_reward=-0.1, **kwargs):
@@ -15,7 +15,7 @@ class MotionControlContinuous(DWABase):
         self.params = None
         # same as the parameters to tune
         self.action_space = Box(
-            low=np.array([-1, -3.14]),
+            low=np.array([-0.2, -3.14]),
             high=np.array([2, 3.14]),
             dtype=np.float32
         )
@@ -70,5 +70,9 @@ class MotionControlContinuousLaser(MotionControlContinuous, DWABaseLaser):
 
 
 class MotionControlContinuousCostmap(MotionControlContinuous, DWABaseCostmap):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+class MotionControlContinuousCostmapResnet(MotionControlContinuous, DWABaseCostmapResnet):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

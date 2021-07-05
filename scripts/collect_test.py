@@ -58,12 +58,12 @@ def main(buffer_path):
                 flag = False
 
     outf.close()
-    if flag:
-        print("Test finished!")
-        print("Find the test result under %s" %(save_path))
-        print("Quick report: avg ep_len %.2f, avg time: %.2f, success rate: %.2f" %(sum(ep_lengths)/len(ep_lengths), sum(times)/len(times), sum(successes)/len(successes)))
-    else:
-        print("Some tests are still running")
+    # if flag:
+    print("Test finished!")
+    print("Find the test result under %s" %(save_path))
+    print("Quick report: avg ep_len %.2f, avg time: %.2f, success rate: %.2f" %(sum(ep_lengths)/len(ep_lengths), sum(times)/len(times), sum(successes)/len(successes)))
+    # else:
+    # print("Some tests are still running")
 
 if __name__ == "__main__": 
     parser = argparse.ArgumentParser(description = 'collect the test result')

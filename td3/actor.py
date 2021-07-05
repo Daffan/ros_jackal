@@ -25,7 +25,7 @@ BUFFER_PATH = os.getenv('BUFFER_PATH')
 
 def initialize_actor(id):
     rospy.logwarn(">>>>>>>>>>>>>>>>>> actor id: %s <<<<<<<<<<<<<<<<<<" %(str(id)))
-    assert os.path.exists(BUFFER_PATH)
+    assert os.path.exists(BUFFER_PATH), BUFFER_PATH
     actor_path = join(BUFFER_PATH, 'actor_%s' %(str(id)))
 
     if not exists(actor_path):

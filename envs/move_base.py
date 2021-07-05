@@ -101,7 +101,7 @@ class Robot_config():
         that is smaller than 0.2 m/s (hard coded here, count as self.bad_vel)
         """
         vx = msg.linear.x
-        if vx <= 0.2:
+        if vx <= 0:
             self.bad_vel += 1
         self.vel_counter += 1
 
