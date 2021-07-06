@@ -9,9 +9,9 @@ env_config:
     gui: false
     verbose: false
     max_step: 400
-    time_step: 0.25
+    time_step: 0.2
     slack_reward: 0
-    collision_reward: 0
+    collision_reward: -0.01
     failure_reward: -20
     success_reward: 20
     init_position: [-2, 2, 1.57]

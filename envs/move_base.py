@@ -166,6 +166,15 @@ class MoveBase():
             param = rospy.get_param('/move_base/global_costmap/inflater_layer/' + param_name)
         return param
 
+    def get_laser_scan(self):
+        data = None
+        while data is None:
+            try:
+                data = rospy.wait_for_message('front/scan', LaserScan, timeout=5)
+            except:
+                pass
+        return data
+
     def set_global_goal(self):
         self.nav_as.wait_for_server()
         try:

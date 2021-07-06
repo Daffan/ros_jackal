@@ -19,7 +19,6 @@ env_config:
     max_step: 100
     time_step: 1
     slack_reward: 0
-    laser_clip: 2
     failure_reward: -100
     success_reward: 20
     init_position: [-2, 2, 1.57]
@@ -27,7 +26,7 @@ env_config:
 
 training_config:
   algorithm: "TD3"
-  network: "cnn2d_deep"
+  network: "cnn2d_test"
   buffer_size: 200000
   actor_lr: 0.00001
   critic_lr: 0.00002

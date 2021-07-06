@@ -69,6 +69,7 @@ class DWAParamContinuousLaser(DWAParamContinuous, DWABaseLaser):
 class DWAParamContinuousCostmap(DWAParamContinuous, DWABaseCostmap):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        
 
 class DWAParamContinuousCostmapResnet(DWAParamContinuous, DWABaseCostmapResnet):
     def __init__(self, **kwargs):

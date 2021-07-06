@@ -219,7 +219,7 @@ class DWABaseLaser(DWABase):
         Returns:
             np.ndarray: (720,) array of laser scan 
         """
-        laser_scan = self.gazebo_sim.get_laser_scan()
+        laser_scan = self.move_base.get_laser_scan()
         laser_scan = np.array(laser_scan.ranges)
         laser_scan[laser_scan > self.laser_clip] = self.laser_clip
         return laser_scan
@@ -272,7 +272,7 @@ class DWABaseCostmap(DWABase):
             Y - PADDING:Y + PADDING,
             X - PADDING:X + PADDING
         ]
-        obstacles_index = np.where(occupancy_grid > 95)
+        obstacles_index = np.where(occupancy_grid == 100)
         path_index = np.where(occupancy_grid == -100)
         occupancy_grid[:, :] = 1
         occupancy_grid[obstacles_index] = 10

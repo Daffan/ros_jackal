@@ -1,19 +1,26 @@
 env_config:
   use_condor: True
-  env_id: "motion_control_continuous_laser-v0"
+  env_id: "dwa_param_continuous_laser-v0"
   seed: 13
   shaping_reward: True
   stack_frame: 1
   kwargs:
+    param_init: [0.5, 1.57, 6, 20, 0.75, 1, 0.3]
+    param_list: ["TrajectoryPlannerROS/max_vel_x", 
+                 "TrajectoryPlannerROS/max_vel_theta", 
+                 "TrajectoryPlannerROS/vx_samples",
+                 "TrajectoryPlannerROS/vtheta_samples",
+                 "TrajectoryPlannerROS/path_distance_bias",
+                 "TrajectoryPlannerROS/goal_distance_bias", 
+                 "inflation_radius"]
     world_name: "world_0.world"
     gui: false
     verbose: false
-    max_step: 400
-    time_step: 0.2
-    laser_clip: 2
+    max_step: 100
+    time_step: 1
     slack_reward: 0
-    collision_reward: -0.1
-    failure_reward: -20
+    laser_clip: 2
+    failure_reward: -100
     success_reward: 20
     init_position: [-2, 2, 1.57]
     goal_position: [0, 10, 0]
@@ -21,20 +28,20 @@ env_config:
 training_config:
   algorithm: "TD3"
   network: "mlp"
-  buffer_size: 500000
-  actor_lr: 0.00002
-  critic_lr: 0.00005
+  buffer_size: 200000
+  actor_lr: 0.00001
+  critic_lr: 0.00002
   num_layers: 2
   hidden_size: 512
   exploration_noise_start: 0.2
   exploration_noise_end: 0.05
   exploration_ratio: 1
-  pre_collect: 4096
+  pre_collect: 1024
   log_intervals: 100
 
   policy_args:
     tau: 0.005
-    gamma: 0.99
+    gamma: 0.95
     policy_noise: 0.2
     update_actor_freq: 2
     noise_clip: 0.5
@@ -43,9 +50,9 @@ training_config:
     estimation_step: 4
 
   training_args:
-    max_epoch: 200
+    max_epoch: 100
     step_per_epoch: 4096
-    collect_per_step: 4096
+    collect_per_step: 1024
     update_per_step: 1024
     batch_size: 128
 

@@ -73,6 +73,7 @@ class MotionControlContinuousCostmap(MotionControlContinuous, DWABaseCostmap):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
+
 class MotionControlContinuousCostmapResnet(MotionControlContinuous, DWABaseCostmapResnet):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
