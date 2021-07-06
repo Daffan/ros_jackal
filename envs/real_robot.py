@@ -12,7 +12,7 @@ from gym.spaces import Box, Discrete
 from geometry_msgs.msg import Twist
 
 from envs.move_base import MoveBase
-from parameter_tuning_envs import RANGE_DICT
+from envs.parameter_tuning_envs import RANGE_DICT
 
 class RealRobotEnv(gym.Env):
     def __init__(
