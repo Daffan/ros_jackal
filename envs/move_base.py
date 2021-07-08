@@ -101,7 +101,7 @@ class Robot_config():
         that is smaller than 0.2 m/s (hard coded here, count as self.bad_vel)
         """
         vx = msg.linear.x
-        if vx <= 0:
+        if vx <= 0.05:
             self.bad_vel += 1
         self.vel_counter += 1
 
@@ -144,6 +144,8 @@ class MoveBase():
         self.sub_gp = rospy.Subscriber("/move_base/NavfnROS/plan", Path, self.robot_config.get_global_path)
         self.sub_vel = rospy.Subscriber("/jackal_velocity_controller/cmd_vel", Twist, self.robot_config.vel_monitor)
 
+        self.laser_scan = None
+
     def set_navi_param(self, param_name, param):
 
         if param_name != 'inflation_radius':
@@ -173,7 +175,17 @@ class MoveBase():
                 data = rospy.wait_for_message('front/scan', LaserScan, timeout=5)
             except:
                 pass
+        self.laser_scan = data
         return data
+
+    def get_collision(self):
+        if self.laser_scan is not None:
+            laser_scan = np.array(self.laser_scan.ranges)
+        else:
+            laser_scan = self.get_laser_scan().ranges
+            self.laser_scan = None
+        d = np.mean(sorted(laser_scan)[:5])
+        return d < 0.3
 
     def set_global_goal(self):
         self.nav_as.wait_for_server()
@@ -191,6 +203,9 @@ class MoveBase():
         self.robot_config.X = 0
         self.robot_config.Y = 0
         self.robot_config.Z = 0
+        # clear vel count history
+        self.robot_config.bad_vel = 0
+        self.robot_config.vel_counter = 0
 
     def clear_costmap(self):
         rospy.wait_for_service('/move_base/clear_costmaps')
@@ -243,8 +258,6 @@ class MoveBase():
         """
         bad_vel = self.robot_config.bad_vel
         vel = self.robot_config.vel_counter
-        self.robot_config.bad_vel = 0
-        self.robot_config.vel_counter = 0
         return bad_vel, vel
 
     def get_local_goal(self):

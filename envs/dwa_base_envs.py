@@ -154,9 +154,12 @@ class DWABase(gym.Env):
         return robot_position.z > 0.1
 
     def _get_info(self):
+        bn, nn = self.move_base.get_bad_vel_num()
         return dict(
             world=self.world_name,
-            time=rospy.get_time() - self.start_time
+            time=rospy.get_time() - self.start_time,
+            collision=self.move_base.get_collision(),
+            recovery=1.0 * bn / nn
         )
 
     def _get_local_goal(self):
