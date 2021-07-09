@@ -16,6 +16,8 @@ def main(buffer_path):
     ep_lengths = []
     times = []
     successes = []
+    collisions = []
+    recoveries = []
     flag = True
 
     save_path = join(buffer_path, "test_result.txt")
@@ -36,12 +38,16 @@ def main(buffer_path):
                     ep_length = len(traj)
                     success = int(traj[-1][-1]['success'])
                     time = float(traj[-1][-1]['time'])
+                    collision = sum([int(s[-1]["collision"]) for s in traj])
+                    recovery = float(traj[-1][-1]['recovery'])
                     
                     if len(filenames) == num_trials and world not in worlds:
-                        outf.write("%d %d %f %d %.2f\n" %(world, ep_length, ep_return, success, time))
+                        outf.write("%d %d %f %d %.2f %d %.2f\n" %(world, ep_length, ep_return, success, time, collision, recovery))
                         ep_lengths.append(float(ep_length))
                         times.append(time)
                         successes.append(success)
+                        collisions.append(collision)
+                        recoveries.append(recovery)
                     else:
                         break
                 except:
@@ -61,7 +67,7 @@ def main(buffer_path):
     # if flag:
     print("Test finished!")
     print("Find the test result under %s" %(save_path))
-    print("Quick report: avg ep_len %.2f, avg time: %.2f, success rate: %.2f" %(sum(ep_lengths)/len(ep_lengths), sum(times)/len(times), sum(successes)/len(successes)))
+    print("Quick report: avg ep_len %.2f, avg time: %.2f, success rate: %.2f, collision: %.2f, recovery: %.2f" %(sum(ep_lengths)/len(ep_lengths), sum(times)/len(times), sum(successes)/len(successes), sum(collisions)/len(collisions), sum(recoveries)/len(recoveries)))
     # else:
     # print("Some tests are still running")
 

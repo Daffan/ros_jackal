@@ -3,7 +3,7 @@ from gym.spaces import Box
 import numpy as np
 import rospy
 
-from envs.dwa_base_envs import DWABase, DWABaseLaser, DWABaseCostmap
+from envs.dwa_base_envs import DWABase, DWABaseLaser, DWABaseCostmap, DWABaseCostmapResnet
 
 # A contant dict that define the ranges of parameters
 RANGE_DICT = {
@@ -72,5 +72,10 @@ class DWAParamContinuousLaser(DWAParamContinuous, DWABaseLaser):
 
 
 class DWAParamContinuousCostmap(DWAParamContinuous, DWABaseCostmap):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        
+
+class DWAParamContinuousCostmapResnet(DWAParamContinuous, DWABaseCostmapResnet):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
