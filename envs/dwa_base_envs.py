@@ -27,6 +27,7 @@ class DWABase(gym.Env):
         slack_reward=-1,
         failure_reward=-50,
         success_reward=0,
+        collision_reward=0,
         verbose=True
     ):
         """Base RL env that initialize jackal simulation in Gazebo
@@ -44,6 +45,7 @@ class DWABase(gym.Env):
         self.slack_reward = slack_reward
         self.failure_reward = failure_reward
         self.success_reward = success_reward
+        self.collision_reward = collision_reward
 
         # launch gazebo and dwa demo
         rospy.logwarn(">>>>>>>>>>>>>>>>>> Load world: %s <<<<<<<<<<<<<<<<<<" %(world_name))
@@ -142,6 +144,10 @@ class DWABase(gym.Env):
             rew = self.failure_reward
         if self._get_success():
             rew = self.success_reward
+        laser_scan = np.array(self.move_base.get_laser_scan().ranges)
+        d = np.mean(sorted(laser_scan)[:10])
+        if d < 0.3:  # minimum distance 0.3 meter 
+            rew += self.collision_reward / (d + 0.05)
         return rew
 
     def _get_done(self):
