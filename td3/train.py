@@ -168,23 +168,38 @@ def train(env, policy, buffer, config):
 
     n_steps = 0
     n_iter = 0
-    epinfo_buf = collections.deque(maxlen=300)
+    n_ep = 0
+    epinfo_buf = collections.deque(maxlen=100)
     t0 = time.time()
     while n_steps < training_args["max_step"]:
         steps, epinfo = collector.collect(training_args["collect_per_step"])
         n_steps += steps
         n_iter += 1
+        n_ep += len(epinfo)
         epinfo_buf.extend(epinfo)
+        actor_grad_norms = []
+        critic_grad_norms = []
+        actor_losses = []
+        critic_losses = []
         for _ in range(training_args["update_per_step"]):
-            policy.train(buffer, training_args["batch_size"])
-
+            actor_grad_norm, critic_grad_norm, actor_loss, critic_loss = policy.train(buffer, training_args["batch_size"])
+            if actor_loss is not None:
+                actor_grad_norms.append(actor_grad_norm)
+                actor_losses.append(actor_loss)
+            critic_grad_norms.append(critic_grad_norm)
+            critic_losses.append(critic_loss)
         t1 = time.time()
         log = {
             "Episode_return": np.mean([epinfo["ep_rew"] for epinfo in epinfo_buf]),
             "Episode_length": np.mean([epinfo["ep_len"] for epinfo in epinfo_buf]),
             "Success": np.mean([epinfo["success"] for epinfo in epinfo_buf]),
             "Time": np.mean([epinfo["ep_time"] for epinfo in epinfo_buf]),
+            "Actor_grad_norm": np.mean(actor_grad_norms),
+            "Critic_grad_norm": np.mean(critic_grad_norms),
+            "Actor_loss": np.mean(actor_losses),
+            "Critic_loss": np.mean(critic_losses),
             "fps": n_steps / (t1 - t0),
+            "n_episode": n_ep,
             "Steps": n_steps
         }
         logging.info(pformat(log))

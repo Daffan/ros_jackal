@@ -101,10 +101,11 @@ def get_world_name(config, id):
         world_name = "BARN/world_%d.world" %(world_name)
     return world_name
 
-def _debug_print_robot_status(env, count, rew):
+def _debug_print_robot_status(env, count, rew, actions):
     Y = env.move_base.robot_config.Y
     X = env.move_base.robot_config.X
     p = env.gazebo_sim.get_model_state().pose.position
+    print(actions)
     print('current step: %d, X position: %f(world_frame), %f(odem_frame), Y position: %f(world_frame), %f(odom_frame), rew: %f' %(count, p.x, X, p.y, Y , rew))
 
 def main(id):
@@ -134,7 +135,7 @@ def main(id):
             traj.append([obs, actions, rew, done, info])
             obs = obs_new
 
-            # _debug_print_robot_status(env, len(traj), rew)
+            _debug_print_robot_status(env, len(traj), rew, actions)
 
         write_buffer(traj, ep, id)
 

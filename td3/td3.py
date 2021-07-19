@@ -145,6 +145,7 @@ class TD3(object):
         critic_loss.backward()
         self.critic_optimizer.step()
 
+        actor_loss = None
         # Delayed policy updates
         if self.total_it % self.update_actor_freq == 0:
 
@@ -164,6 +165,18 @@ class TD3(object):
             for param, target_param in zip(self.actor.parameters(), self.actor_target.parameters()):
                 target_param.data.copy_(
                     self.tau * param.data + (1 - self.tau) * target_param.data)
+
+        actor_loss = actor_loss.item() if actor_loss is not None else None
+        critic_loss = critic_loss.item()
+        return self.grad_norm(self.actor), self.grad_norm(self.critic), actor_loss, critic_loss
+
+    def grad_norm(self, model):
+        total_norm = 0
+        for p in model.parameters():
+            param_norm = p.grad.data.norm(2).item() if p.grad is not None else 0
+            total_norm += param_norm ** 2
+        total_norm = total_norm ** (1. / 2)
+        return total_norm
 
     def save(self, dir, filename):
         torch.save(self.critic.state_dict(), join(dir, filename + "_critic"))
@@ -199,7 +212,7 @@ class ReplayBuffer(object):
         self.state[self.ptr] = state
         self.action[self.ptr] = action
         self.next_state[self.ptr] = next_state
-        self.reward[self.ptr] = reward
+        self.reward[self.ptr] = (reward - 0.02478) / 6.499
         self.not_done[self.ptr] = 1. - done
         self.task[self.ptr] = task
 
