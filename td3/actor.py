@@ -13,11 +13,7 @@ import rospy
 import argparse
 import logging
 
-from tianshou.exploration import GaussianNoise
-from tianshou.data import Batch
-
-from policy import TD3Policy, SACPolicy
-from train import initialize_envs, initialize_policy
+from train import initialize_policy
 from envs import registration
 from envs.wrappers import ShapingRewardWrapper, StackFrame
 
@@ -43,7 +39,8 @@ def initialize_actor(id):
 
     return config
 
-def load_model(model):
+def load_policy(policy):
+    '''
     model_path = join(BUFFER_PATH, 'policy.pth')
     state_dict_raw = None
     while (state_dict_raw is None):
@@ -79,8 +76,9 @@ def load_model(model):
 
     if eps is None:
         raise FileNotFoundError("critic not initialized at %s" % BUFFER_PATH)
-
-    return model, eps 
+    '''
+    policy.load(BUFFER_PATH, "policy")
+    return policy
 
 def write_buffer(traj, ep, id):
     with open(join(BUFFER_PATH, 'actor_%s' %(str(id)), 'traj_%d.pickle' %(ep)), 'wb') as f:
@@ -125,27 +123,15 @@ def main(id):
     ep = 0
     while True:
         obs = env.reset()
-        obs_batch = Batch(obs=[obs], info={})
         ep += 1
         traj = []
         done = False
-        policy, eps = load_model(policy)
-        try:
-            policy.set_exp_noise(GaussianNoise(sigma=eps))
-        except:
-            pass
+        policy = load_policy(policy)
         while not done:
-            p = random.random()
-            obs = torch.tensor([obs]).float()
-            if isinstance(policy._noise, GaussianNoise) or p > eps:
-                actions = policy(obs_batch).act.cpu().detach().numpy().reshape(-1)
-            else:
-                actions = get_random_action()
-                actions = np.array(actions)
+            actions = policy.select_action(obs)
             obs_new, rew, done, info = env.step(actions)
             info["world"] = world_name
             traj.append([obs, actions, rew, done, info])
-            obs_batch = Batch(obs=[obs_new], info={})
             obs = obs_new
 
             # _debug_print_robot_status(env, len(traj), rew)

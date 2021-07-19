@@ -8,25 +8,21 @@ from os.path import join, dirname, abspath, exists
 import sys
 import os
 import shutil
+import logging
+import collections
+import time
+from pprint import pformat
 
 import torch
 from tensorboardX import SummaryWriter
 
-from tianshou.utils.net.common import Net as MLP
-from tianshou.exploration import GaussianNoise
-from tianshou.utils.net.continuous import Actor
-from tianshou.data import Collector, ReplayBuffer
-from tianshou.env import DummyVectorEnv
-
 sys.path.append(dirname(dirname(abspath(__file__))))
-from policy import TD3Policy
 from envs import registration
 from envs.wrappers import ShapingRewardWrapper, StackFrame
-from offpolicy_trainer import offpolicy_trainer
-from offpolicy_trainer_condor import offpolicy_trainer_condor
-from collector import Collector as CondorCollector
-from infomation_envs import InfoEnv
-from model import Cnn1d, Cnn2dTest, Cnn2d, Cnn2dDeep, Resnet18, Critic  # comtumized Critic to cover the the CNN case
+from information_envs import InfoEnv
+from net import MLP, CNN
+from td3 import Actor, Critic, TD3, ReplayBuffer
+from collector import CondorCollector, LocalCollector
 
 def initialize_config(config_path, save_path):
     # Load the config files
@@ -71,13 +67,12 @@ def initialize_envs(config):
         if env_config["shaping_reward"]:
             env = ShapingRewardWrapper(env)
         env = StackFrame(env, stack_frame=env_config["stack_frame"])
-        train_envs = DummyVectorEnv([lambda: env for _ in range(1)])
     else:
         # If use condor, we want to avoid initializing env instance from the central learner
         # So here we use a fake env with obs_space and act_space information
         print("    >>>> Using actors on Condor")
-        train_envs = InfoEnv(config)
-    return train_envs
+        env = InfoEnv(config)
+    return env
 
 def seed(config):
     env_config = config["env_config"]
@@ -88,108 +83,50 @@ def seed(config):
 def initialize_policy(config, env):
     training_config = config["training_config"]
 
-    state_shape = env.observation_space.shape
-    action_shape = env.action_space.shape
+    state_dim = env.observation_space.shape
+    action_dim = np.prod(env.action_space.shape)
     action_space_low = env.action_space.low
     action_space_high = env.action_space.high
     devices = GPUtil.getAvailable(order = 'first', limit = 1, maxLoad = 0.8, maxMemory = 0.8, includeNan=False, excludeID=[], excludeUUID=[])
     device = "cuda:%d" %(devices[0]) if len(devices) > 0 else "cpu"
     print("    >>>> Running on device %s" %(device))
 
-    if training_config["network"] == "mlp":
-        make_net = lambda act_shape: MLP(
-            training_config['num_layers'],
-            state_shape, 
-            act_shape, 
-            concat=True if act_shape != 0 else False,
-            device=device,
-            hidden_layer_size=training_config['hidden_size']
-        )
-    elif training_config["network"] == "cnn1d":
-        make_net =  lambda act_shape: Cnn1d(
-            action_shape=act_shape,
-            num_frames=config["env_config"]["stack_frame"],
-            device=device
-        )
-    elif training_config["network"] == "cnn2d":
-        make_net =  lambda act_shape: Cnn2d(
-            action_shape=act_shape,
-            num_frames=1, # config["env_config"]["stack_frame"],
-            device=device
-        )
-    elif training_config["network"] == "cnn2d_deep":
-        make_net =  lambda act_shape: Cnn2dDeep(
-            action_shape=act_shape,
-            num_frames=config["env_config"]["stack_frame"],
-            device=device
-        )
-    elif training_config["network"] == "cnn2d_test":
-        make_net =  lambda act_shape: Cnn2dTest(
-            action_shape=act_shape,
-            num_frames=3, # config["env_config"]["stack_frame"],
-            device=device
-        )
-    elif training_config["network"] == "resnet18":
-        make_net =  lambda act_shape: Resnet18(
-            action_shape=act_shape,
-            num_frames=3, # config["env_config"]["stack_frame"],
-            device=device
-        )
-    else:
-        raise NotImplementedError
-    actor_net = make_net(0)
+    state_preprocess = CNN(config["env_config"]["stack_frame"]) if training_config["network"] == "cnn" else None
+    input_dim = state_preprocess.feature_dim if state_preprocess else np.prod(state_dim) 
     actor = Actor(
-        actor_net,
-        action_shape,
-        max_action=1, 
-        device=device, 
-        hidden_layer_size=training_config['hidden_size']
+        state_preprocess=state_preprocess,
+        head=MLP(input_dim, training_config['num_layers'], training_config['hidden_layer_size']),
+        action_dim=action_dim
     ).to(device)
     actor_optim = torch.optim.Adam(
         actor.parameters(), 
         lr=training_config['actor_lr']
     )
 
-    critic_net = make_net(action_shape)
-    critic1 = Critic(
-        critic_net, 
-        device=device,
-        network=training_config["network"],
-        hidden_layer_size=training_config['hidden_size']
+    state_preprocess = CNN(config["env_config"]["stack_frame"]) if training_config["network"] == "cnn" else None
+    input_dim += np.prod(action_dim)
+    critic = Critic(
+        state_preprocess,
+        head=MLP(input_dim, training_config['num_layers'], training_config['hidden_layer_size'])
     ).to(device)
-    critic1_optim = torch.optim.Adam(
-        critic1.parameters(), 
-        lr=training_config['critic_lr']
-    )
-    critic2 = Critic(
-        critic_net,
-        device=device,
-        network=training_config["network"],
-        hidden_layer_size=training_config['hidden_size']
-    ).to(device)
-    critic2_optim = torch.optim.Adam(
-        critic2.parameters(), 
+    critic_optim = torch.optim.Adam(
+        critic.parameters(), 
         lr=training_config['critic_lr']
     )
 
-    training_args = training_config["policy_args"]
-    exploration_noise = GaussianNoise(
-        sigma=training_config['exploration_noise_start']
-    )
-    policy = TD3Policy(
+    policy = TD3(
         actor, actor_optim, 
-        critic1, critic1_optim, 
-        critic2, critic2_optim,
-        exploration_noise=exploration_noise,
+        critic, critic_optim, 
         action_range=[action_space_low, action_space_high],
         device=device,
-        **training_args
+        **training_config["policy_args"]
     )
 
-    buffer = ReplayBuffer(training_config['buffer_size'])
+    buffer = ReplayBuffer(state_dim, action_dim, training_config['buffer_size'], device=device)
 
     return policy, buffer
 
+"""
 def compute_exp_noise(e, start, end, ratio, epoch):
     exp_noise = start * (1. - (e - 1.) / epoch / ratio)
     return max(end, exp_noise)
@@ -212,33 +149,51 @@ def generate_train_fn(config, policy, save_path):
             os.path.join(save_path, "policy.pth")
         )
     ]
+"""
 
-def train(train_envs, policy, buffer, config):
+def train(env, policy, buffer, config):
     env_config = config["env_config"]
     training_config = config["training_config"]
 
     save_path, writer = initialize_logging(config)
     
     if env_config["use_condor"]:
-        collector = CondorCollector
-        offpolicy_trainer_instance = offpolicy_trainer_condor
+        collector = CondorCollector(policy, env, buffer)
     else:
-        collector = Collector
-        offpolicy_trainer_instance = offpolicy_trainer
+        collector = LocalCollector(policy, env, buffer)
 
-    train_collector = collector(policy, train_envs, buffer)
     training_args = training_config["training_args"]
-    train_fn = generate_train_fn(config, policy, save_path)
     print("    >>>> Pre-collect experience")
-    train_collector.collect(n_step=training_config['pre_collect'])
+    collector.collect(n_step=training_config['pre_collect'])
 
-    result = offpolicy_trainer_instance(
-        policy, 
-        train_collector, 
-        train_fn=train_fn, 
-        writer=writer,
-        **training_args
-    )
+    n_steps = 0
+    n_iter = 0
+    epinfo_buf = collections.deque(maxlen=300)
+    t0 = time.time()
+    while n_steps < training_args["max_step"]:
+        steps, epinfo = collector.collect(training_args["collect_per_step"])
+        n_steps += steps
+        n_iter += 1
+        epinfo_buf.extend(epinfo)
+        for _ in range(training_args["update_per_step"]):
+            policy.train(buffer, training_args["batch_size"])
+
+        t1 = time.time()
+        log = {
+            "Episode_return": np.mean([epinfo["ep_rew"] for epinfo in epinfo_buf]),
+            "Episode_length": np.mean([epinfo["ep_len"] for epinfo in epinfo_buf]),
+            "Success": np.mean([epinfo["success"] for epinfo in epinfo_buf]),
+            "Time": np.mean([epinfo["ep_time"] for epinfo in epinfo_buf]),
+            "fps": n_steps / (t1 - t0),
+            "Steps": n_steps
+        }
+        logging.info(pformat(log))
+
+        if n_iter % training_config["log_intervals"] == 0:
+            for k in log.keys():
+                writer.add_scalar('train/' + k, log[k], global_step=n_steps)
+            policy.save(save_path, "policy")
+
     if env_config["use_condor"]:
         BASE_PATH = os.getenv('BUFFER_PATH')
         shutil.rmtree(BASE_PATH, ignore_errors=True)  # a way to force all the actors to stop
@@ -248,6 +203,7 @@ def train(train_envs, policy, buffer, config):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description = 'Start condor training')
     parser.add_argument('--config_path', dest='config_path', default="../configs/config.ymal")
+    logging.getLogger().setLevel("INFO")
     args = parser.parse_args()
     CONFIG_PATH = args.config_path
     SAVE_PATH = "logging/"
