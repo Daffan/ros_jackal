@@ -212,7 +212,7 @@ class ReplayBuffer(object):
         self.state[self.ptr] = state
         self.action[self.ptr] = action
         self.next_state[self.ptr] = next_state
-        self.reward[self.ptr] = (reward - 0.02478) / 6.499
+        self.reward[self.ptr] = reward # (reward - 0.02478) / 6.499
         self.not_done[self.ptr] = 1. - done
         self.task[self.ptr] = task
 
