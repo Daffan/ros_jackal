@@ -43,8 +43,12 @@ shutil.copyfile(
     join(buffer_path, "config.yaml")    
 )
 shutil.copyfile(
-    join(model_dir, "policy.pth"), 
-    join(buffer_path, "policy.pth")
+    join(model_dir, "policy_actor"), 
+    join(buffer_path, "policy_actor")
+)
+shutil.copyfile(
+    join(model_dir, "policy_noise"), 
+    join(buffer_path, "policy_noise")
 )
 # Set the exploration noise to be 0
 with open(join(buffer_path, 'eps.txt'), 'w') as f:

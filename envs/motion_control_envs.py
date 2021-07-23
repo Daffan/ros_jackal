@@ -8,9 +8,8 @@ from geometry_msgs.msg import Twist
 from envs.dwa_base_envs import DWABase, DWABaseLaser, DWABaseCostmap, DWABaseCostmapResnet
 
 class MotionControlContinuous(DWABase):
-    def __init__(self, collision_reward=-0.1, **kwargs):
+    def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.collision_reward = collision_reward
         self._cmd_vel_pub = rospy.Publisher('/cmd_vel', Twist, queue_size=1)
         self.params = None
         # same as the parameters to tune
@@ -37,15 +36,6 @@ class MotionControlContinuous(DWABase):
         obs = self._get_observation()
         self.gazebo_sim.pause()
         return obs
-
-    def _get_reward(self):
-        rew = super()._get_reward()
-        # This part handles possible collision
-        laser_scan = np.array(self.gazebo_sim.get_laser_scan().ranges)
-        d = np.mean(sorted(laser_scan)[:10])
-        if d < 0.3:  # minimum distance 0.3 meter 
-            rew += self.collision_reward / (d + 0.05)
-        return rew
 
     def _get_info(self):
         info = dict(success=self._get_success(), params=self.params)

@@ -19,7 +19,7 @@ env_config:
 
 training_config:
   algorithm: "TD3"
-  network: "cnn2d"
+  network: "cnn"
   buffer_size: 200000
   actor_lr: 0.000001
   critic_lr: 0.00002
@@ -27,7 +27,6 @@ training_config:
   hidden_size: 256
   exploration_noise_start: 0.2
   exploration_noise_end: 0.05
-  exploration_ratio: 1
   pre_collect: 10240
   log_intervals: 100
 

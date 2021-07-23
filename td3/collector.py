@@ -10,8 +10,18 @@ import pickle
 import shutil
 
 BUFFER_PATH = os.getenv('BUFFER_PATH')
-class Collector(object):
 
+
+class LocalCollector(object):
+    def __init__(self, policy, env, replaybuffer):
+        self.policy = policy
+        self.buffer = replaybuffer
+
+    def collect(self, n_steps):
+        raise NotImplementedError
+        
+
+class CondorCollector(object):
     def __init__(self, policy, env, replaybuffer):
         '''
         it's a fake tianshou Collector object with the same api
@@ -29,33 +39,20 @@ class Collector(object):
         self.update_policy()
         # save the env config the actor should read from
         shutil.copyfile(
-            env.config["env_config"]["config_path"], 
-            join(BUFFER_PATH, "config.yaml")    
+            env.config["env_config"]["config_path"],
+            join(BUFFER_PATH, "config.yaml")
         )
-
-    def update_policy(self):
-        # torch.save(self.policy.state_dict(), join(BASE_PATH, 'policy_copy.pth'))
-        device = self.policy.device
-        self.policy.to("cpu")
-        with open(join(BUFFER_PATH, "policy_copy.pth"), "wb") as f:
-            pickle.dump(self.policy.state_dict(), f)
-        shutil.move(join(BUFFER_PATH, 'policy_copy.pth'), join(BUFFER_PATH, 'policy.pth'))
-        self.policy.to(device)
-        with open(join(BUFFER_PATH, 'eps.txt'), 'w') as f:
-            try:
-                std = self.policy._noise._sigma
-            except:
-                std = self.policy._noise
-            f.write(str(std))
 
     def buffer_expand(self, traj):
         for i in range(len(traj)):
-            obs_next = traj[i+1][0] if i < len(traj)-1 else traj[i][0]
-            world = int(traj[i][-1]['world'].split("_")[-1].split(".")[0])
-            self.buffer.add(traj[i][0], traj[i][1], \
-                            traj[i][2], traj[i][3], \
-                            obs_next, {"world": world})
-    
+            state, action, reward, done, info = traj[i]
+            state_next = traj[i+1][0] if i < len(traj)-1 else traj[i][0]
+            world = int(info['world'].split(
+                "_")[-1].split(".")[0])  # task index
+            self.buffer.add(state, action,
+                            state_next, reward,
+                            done, world)
+
     def natural_keys(self, text):
         return int(re.split(r'(\d+)', text)[1])
 
@@ -64,22 +61,30 @@ class Collector(object):
         idx = np.argsort(ep_idx)
         return np.array(traj_files)[idx]
 
+    def update_policy(self):
+        self.policy.save(BUFFER_PATH, "policy_copy")
+        # To prevent failure of actors when reading the saved policy
+        shutil.move(
+            join(BUFFER_PATH, "policy_copy_actor"),
+            join(BUFFER_PATH, "policy_actor")
+        )
+        shutil.move(
+            join(BUFFER_PATH, "policy_copy_noise"),
+            join(BUFFER_PATH, "policy_noise")
+        )
+
     def collect(self, n_step):
         """ This method searches the buffer folder and collect all the saved trajectories
         """
         # collect happens after policy is updated
         self.update_policy()
         steps = 0
-        ep_rew = []
-        ep_len = []
-        success = []
-        world = []
-        times = []
+        results = []
         while steps < n_step:
             time.sleep(1)
             np.random.shuffle(self.ids)
             for id in self.ids:
-                base = join(BUFFER_PATH, 'actor_%d' %(id))
+                base = join(BUFFER_PATH, 'actor_%d' % (id))
                 try:
                     traj_files = os.listdir(base)
                 except:
@@ -92,18 +97,17 @@ class Collector(object):
                             if steps < n_step:  # if reach the target steps, don't put the experinece into the buffer
                                 with open(target, 'rb') as f:
                                     traj = pickle.load(f)
-                                    ep_rew.append(sum([t[2] for t in traj]))
-                                    ep_len.append(len(traj))
-                                    success.append(float(traj[-1][-1]['success']))
-                                    world.append(traj[-1][-1]['world'])
-                                    times.append(traj[-1][-1]['time'])
+                                    ep_rew = sum([t[2] for t in traj])
+                                    ep_len = len(traj)
+                                    success = float(traj[-1][-1]['success'])
+                                    ep_time = traj[-1][-1]['time']
+                                    results.append(dict(ep_rew=ep_rew, ep_len=ep_len, success=success, ep_time=ep_time))
                                     self.buffer_expand(traj)
-                                    steps += len(traj)
+                                    steps += ep_len
                             os.remove(join(base, p))
                     except:
                         logging.exception('')
-                        print("failed to load actor_%s:%s" %(id, p))
+                        print("failed to load actor_%s:%s" % (id, p))
                         # os.remove(join(base, p))
                         pass
-        return {'n/st': steps, 'n/stt': steps, 'ep_rew': ep_rew, 'ep_len': ep_len, 'success': success, 'world': world, 'time': times}
-
+        return steps, results

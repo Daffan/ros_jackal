@@ -7,3 +7,4 @@ out
 configs/config.yaml
 data
 slurm_logs
+configs

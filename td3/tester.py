@@ -6,8 +6,6 @@ import gym
 import torch
 import argparse
 
-from tianshou.data import Batch
-
 import sys
 sys.path.append(dirname(dirname(abspath(__file__))))
 from envs.wrappers import ShapingRewardWrapper, StackFrame
@@ -21,12 +19,9 @@ def get_world_name(config, id):
         world_name = "BARN/world_%d.world" %(world_name)
     return world_name
 
-def load_model(policy):
-    model_path = join(BUFFER_PATH, 'policy.pth')
-    state_dict = torch.load(model_path, map_location="cpu")
-    policy.load_state_dict(state_dict)
-    policy = policy.float()
-    policy.set_exp_noise(None)
+def load_policy(policy):
+    policy.load(BUFFER_PATH, "policy")
+    policy.exploration_noise = 0
     return policy
 
 def main(args):
@@ -43,26 +38,23 @@ def main(args):
     env = StackFrame(env, stack_frame=env_config["stack_frame"]) 
 
     policy, _ = initialize_policy(config, env)
-    policy = load_model(policy)
+    policy = load_policy(policy)
 
     print(">>>>>>>>>>>>>> Running on %s <<<<<<<<<<<<<<<<" %(world_name))
     ep = 0
     while ep < num_trials:
         obs = env.reset()
-        obs_batch = Batch(obs=[obs], info={})
         ep += 1
         traj = []
         done = False
         while not done:
-            obs = torch.tensor([obs]).float()
             if test_object == "local":
-                actions = policy(obs_batch).act.cpu().detach().numpy().reshape(-1)
+                actions = policy.select_action(obs)
             elif test_object == "dwa":
                 actions = env_config["kwargs"]["param_init"]
             obs_new, rew, done, info = env.step(actions)
             info["world"] = world_name
             traj.append([None, None, rew, done, info])  # For testing, we only need rew and ep_length
-            obs_batch = Batch(obs=[obs_new], info={})
             obs = obs_new
 
             # _debug_print_robot_status(env, len(traj), rew)
