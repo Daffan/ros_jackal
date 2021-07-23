@@ -40,44 +40,17 @@ def initialize_actor(id):
     return config
 
 def load_policy(policy):
-    '''
-    model_path = join(BUFFER_PATH, 'policy.pth')
-    state_dict_raw = None
-    while (state_dict_raw is None):
+    f = True
+    while f:
         try:
-            if not os.path.exists(join(BUFFER_PATH, "policy_copy.pth")):
-                with open(join(BUFFER_PATH, "policy.pth"), "rb") as f:
-                    # state_dict_raw = torch.load(model_path, map_location=torch.device('cpu'))
-                    state_dict_raw = pickle.load(f)
+            if not os.path.exists(join(BUFFER_PATH, "policy_copy_actor")):
+                policy.load(BUFFER_PATH, "policy")
+            f = False
         except FileNotFoundError:
-            time.sleep(4)
-            pass
+            time.sleep(1)
         except:
             logging.exception('')
-            pass
-        time.sleep(1)
-
-    if state_dict_raw is None:
-        raise FileNotFoundError("critic not initialized at %s" %(BUFFER_PATH))
-
-    model.load_state_dict(state_dict_raw)
-    model = model.float()
-    # exploration noise std
-    with open(join(BUFFER_PATH, 'eps.txt'), 'r') as f:
-        eps = None
-        count = 0
-        while (eps is None) and count < 10:
-            try:
-                eps = float(f.readlines()[0])
-            except IndexError:
-                pass
-            time.sleep(2)
-            count += 1
-
-    if eps is None:
-        raise FileNotFoundError("critic not initialized at %s" % BUFFER_PATH)
-    '''
-    policy.load(BUFFER_PATH, "policy")
+            time.sleep(1)
     return policy
 
 def write_buffer(traj, ep, id):

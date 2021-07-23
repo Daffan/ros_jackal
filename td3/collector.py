@@ -36,7 +36,7 @@ class CondorCollector(object):
         if not exists(BUFFER_PATH):
             os.mkdir(BUFFER_PATH)
         # save the current policy
-        self.policy.save(BUFFER_PATH, "policy")
+        self.update_policy()
         # save the env config the actor should read from
         shutil.copyfile(
             env.config["env_config"]["config_path"],
@@ -61,11 +61,23 @@ class CondorCollector(object):
         idx = np.argsort(ep_idx)
         return np.array(traj_files)[idx]
 
+    def update_policy(self):
+        self.policy.save(BUFFER_PATH, "policy_copy")
+        # To prevent failure of actors when reading the saved policy
+        shutil.move(
+            join(BUFFER_PATH, "policy_copy_actor"),
+            join(BUFFER_PATH, "policy_actor")
+        )
+        shutil.move(
+            join(BUFFER_PATH, "policy_copy_noise"),
+            join(BUFFER_PATH, "policy_noise")
+        )
+
     def collect(self, n_step):
         """ This method searches the buffer folder and collect all the saved trajectories
         """
         # collect happens after policy is updated
-        self.policy.save(BUFFER_PATH, "policy")
+        self.update_policy()
         steps = 0
         results = []
         while steps < n_step:

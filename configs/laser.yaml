@@ -20,8 +20,8 @@ env_config:
     time_step: 1
     slack_reward: 0
     laser_clip: 2
-    failure_reward: -10
-    success_reward: 10
+    failure_reward: 0
+    success_reward: 20
     collision_reward: 0
     init_position: [-2, 2, 1.57]
     goal_position: [0, 10, 0]
@@ -29,13 +29,15 @@ env_config:
 training_config:
   algorithm: "TD3"
   network: "mlp"
-  buffer_size: 1000000
+  buffer_size: 200000
   actor_lr: 0.00001
   critic_lr: 0.00002
   num_layers: 2
   hidden_layer_size: 512
   pre_collect: 1024
   log_intervals: 2
+  exploration_noise_start: 0.2
+  exploration_noise_end: 0.05
 
   policy_args:
     tau: 0.005
@@ -43,13 +45,13 @@ training_config:
     policy_noise: 0.2
     update_actor_freq: 2
     noise_clip: 0.5
-    exploration_noise: 0.1
+    n_step: 4
 
   training_args:
     max_step: 1000000
     collect_per_step: 1024
     update_per_step: 1024
-    batch_size: 256
+    batch_size: 128
 
 condor_config:
   test_object: "local"  # or "dwa"

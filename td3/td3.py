@@ -1,4 +1,5 @@
 import copy
+import pickle
 from os.path import join
 
 import numpy as np
@@ -74,6 +75,7 @@ class TD3(object):
             tau=0.005,
             policy_noise=0.2,
             noise_clip=0.5,
+            n_step=4,
             update_actor_freq=2,
             exploration_noise=0.1
     ):
@@ -93,6 +95,7 @@ class TD3(object):
         self.update_actor_freq = update_actor_freq
         self.exploration_noise = exploration_noise
         self.device = device
+        self.n_step = n_step
 
         self.total_it = 0
         self.action_range = action_range
@@ -112,9 +115,11 @@ class TD3(object):
     def train(self, replay_buffer, batch_size=256):
         self.total_it += 1
 
-        # Sample replay buffer
-        state, action, next_state, reward, not_done, task = replay_buffer.sample(
+        # Sample replay buffer ("task" for multi-task learning)
+        state, action, next_state, reward, not_done, task, ind = replay_buffer.sample(
             batch_size)
+
+        next_state, reward, not_done, gammas = replay_buffer.n_step_return(self.n_step, ind, self.gamma)
 
         with torch.no_grad():
             # Select action according to policy and add clipped noise
@@ -123,17 +128,15 @@ class TD3(object):
             ).clamp(-self.noise_clip, self.noise_clip)
 
             next_action = (self.actor_target(next_state) + noise).clamp(-1, 1)
-            next_action *= self._action_scale
-            next_action += self._action_bias
-            # for i, (low, high) in enumerate(zip(self.action_range[0], self.action_range[1])):
-            #     next_action[:, i] = next_action.clone()[:, i].clamp(low, high)
 
             # Compute the target Q value
             target_Q1, target_Q2 = self.critic_target(next_state, next_action)
             target_Q = torch.min(target_Q1, target_Q2)
-            target_Q = reward + not_done * self.gamma * target_Q
+            target_Q = reward + not_done * gammas * target_Q
 
         # Get current Q estimates
+        action -= self._action_bias
+        action /= self._action_scale  # to range of -1, 1
         current_Q1, current_Q2 = self.critic(state, action)
 
         # Compute critic loss
@@ -179,18 +182,19 @@ class TD3(object):
         return total_norm
 
     def save(self, dir, filename):
-        torch.save(self.critic.state_dict(), join(dir, filename + "_critic"))
-        torch.save(self.actor.state_dict(), join(dir, filename + "_actor"))
-        torch.save(self.exploration_noise, join(dir, filename + "_noise"))
+        self.actor.to("cpu")
+        with open(join(dir, filename + "_actor"), "wb") as f:
+            pickle.dump(self.actor.state_dict(), f)
+        with open(join(dir, filename + "_noise"), "wb") as f:
+            pickle.dump(self.exploration_noise, f)
+        self.actor.to(self.device)
 
     def load(self, dir, filename):
-        self.critic.load_state_dict(torch.load(join(dir, filename + "_critic"), map_location=self.device))
-        self.critic_target = copy.deepcopy(self.critic)
-
-        self.actor.load_state_dict(torch.load(join(dir, filename + "_actor"), map_location=self.device))
-        self.actor_target = copy.deepcopy(self.actor)
-
-        self.exploration_noise = torch.load(join(dir, filename + "_noise"))
+        with open(join(dir, filename + "_actor"), "rb") as f:
+            self.actor.load_state_dict(pickle.load(f))
+            self.actor_target = copy.deepcopy(self.actor)
+        with open(join(dir, filename + "_noise"), "rb") as f:
+            self.exploration_noise = pickle.load(f)
 
 
 class ReplayBuffer(object):
@@ -198,6 +202,7 @@ class ReplayBuffer(object):
         self.max_size = max_size
         self.ptr = 0
         self.size = 0
+        self.mean, self.std = 0.0, 1.0
 
         self.state = np.zeros((max_size, *state_dim))
         self.action = np.zeros((max_size, action_dim))
@@ -219,6 +224,12 @@ class ReplayBuffer(object):
         self.ptr = (self.ptr + 1) % self.max_size
         self.size = min(self.size + 1, self.max_size)
 
+        if self.ptr == 1000:
+            rew = self.reward[:1000]
+            self.mean, self.std = rew.mean(), rew.std()
+            if np.isclose(self.std, 0, 1e-2):
+                self.mean, self.std = 0.0, 1.0
+
     def sample(self, batch_size):
         ind = np.random.randint(0, self.size, size=batch_size)
 
@@ -228,5 +239,29 @@ class ReplayBuffer(object):
             torch.FloatTensor(self.next_state[ind]).to(self.device),
             torch.FloatTensor(self.reward[ind]).to(self.device),
             torch.FloatTensor(self.not_done[ind]).to(self.device),
-            torch.FloatTensor(self.task[ind]).to(self.device)
-        )
+            torch.FloatTensor(self.task[ind]).to(self.device),
+            ind)
+
+    def n_step_return(self, n_step, ind, gamma):
+        reward = []
+        not_done = []
+        next_state = []
+        gammas = []
+        for i in ind:
+            n = 0
+            r = 0
+            for _ in range(n_step):
+                idx = (i + n) % self.size
+                r += (self.reward[idx] - self.mean) / self.std * gamma ** n
+                if not self.not_done[idx]:
+                    break
+                n = n + 1
+            next_state.append(self.next_state[idx])
+            not_done.append(self.not_done[idx])
+            reward.append(r)
+            gammas.append([gamma ** (n + 1)])
+        next_state = torch.FloatTensor(np.array(next_state)).to(self.device)
+        not_done = torch.FloatTensor(np.array(not_done)).to(self.device)
+        reward = torch.FloatTensor(np.array(reward)).to(self.device)
+        gammas = torch.FloatTensor(np.array(gammas)).to(self.device)
+        return next_state, reward, not_done, gammas

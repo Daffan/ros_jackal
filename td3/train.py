@@ -126,31 +126,6 @@ def initialize_policy(config, env):
 
     return policy, buffer
 
-"""
-def compute_exp_noise(e, start, end, ratio, epoch):
-    exp_noise = start * (1. - (e - 1.) / epoch / ratio)
-    return max(end, exp_noise)
-
-def generate_train_fn(config, policy, save_path):
-    training_config = config["training_config"]
-    return lambda e: [
-        policy.set_exp_noise(
-            GaussianNoise(
-                sigma=compute_exp_noise(
-                    e, training_config["exploration_noise_start"], 
-                    training_config["exploration_noise_end"],
-                    training_config["exploration_ratio"], 
-                    training_config["training_args"]["max_epoch"]
-                )
-            )
-        ),
-        torch.save(
-            policy.state_dict(), 
-            os.path.join(save_path, "policy.pth")
-        )
-    ]
-"""
-
 def train(env, policy, buffer, config):
     env_config = config["env_config"]
     training_config = config["training_config"]
@@ -169,14 +144,19 @@ def train(env, policy, buffer, config):
     n_steps = 0
     n_iter = 0
     n_ep = 0
-    epinfo_buf = collections.deque(maxlen=100)
+    epinfo_buf = collections.deque(maxlen=300)
     t0 = time.time()
     while n_steps < training_args["max_step"]:
+        # Linear decaying exploration noise from "start" -> "end"
+        policy.exploration_noise = \
+            - (training_config["exploration_noise_start"] - training_config["exploration_noise_end"]) \
+            *  n_steps / training_args["max_step"] + training_config["exploration_noise_start"]
         steps, epinfo = collector.collect(training_args["collect_per_step"])
         n_steps += steps
         n_iter += 1
         n_ep += len(epinfo)
         epinfo_buf.extend(epinfo)
+
         actor_grad_norms = []
         critic_grad_norms = []
         actor_losses = []
@@ -188,6 +168,7 @@ def train(env, policy, buffer, config):
                 actor_losses.append(actor_loss)
             critic_grad_norms.append(critic_grad_norm)
             critic_losses.append(critic_loss)
+
         t1 = time.time()
         log = {
             "Episode_return": np.mean([epinfo["ep_rew"] for epinfo in epinfo_buf]),
@@ -200,7 +181,8 @@ def train(env, policy, buffer, config):
             "Critic_loss": np.mean(critic_losses),
             "fps": n_steps / (t1 - t0),
             "n_episode": n_ep,
-            "Steps": n_steps
+            "Steps": n_steps,
+            "Exploration_noise": policy.exploration_noise
         }
         logging.info(pformat(log))
 
