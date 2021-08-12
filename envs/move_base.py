@@ -260,6 +260,10 @@ class MoveBase():
         vel = self.robot_config.vel_counter
         return bad_vel, vel
 
+    def reset_vel_count(self):
+        self.robot_config.bad_vel = 0
+        self.robot_config.vel_counter = 0
+
     def get_local_goal(self):
         """Get the local goal coordinate relative to the robot's current location
 

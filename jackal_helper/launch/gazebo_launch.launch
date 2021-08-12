@@ -4,6 +4,7 @@
   <arg name="headless" default="true" />
   <arg name="verbose" default="true" />
   <arg name="world_name" default="$(find jackal_helper)/worlds/jackal_race.world" />
+  <env name="GAZEBO_MODEL_PATH" value="$(find jackal_helper)/models:$(optenv GAZEBO_MODEL_PATH)" />
 
   <!-- Short-term hack to support the original front_laser:=true argument for spawning
        the simulator. This will be removed in favour of using the config:=x arg instead. -->
