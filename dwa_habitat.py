@@ -39,7 +39,7 @@ def crop_image_from_start_end(sx, sy, ex, ey, habitat_index, time, recovery, tot
     ix, iy = imp.shape[0], imp.shape[1]
     imp = imp[ix //2 - IM_SIZE // 2: ix //2 + IM_SIZE // 2, iy //2 - IM_SIZE // 2: iy //2 + IM_SIZE // 2]
 
-    hash_code = str(uuid.uuid4().hex[:8]) + ",t=%.2f,r=%d,c=%d" %(time, recovery, total)
+    hash_code = str(uuid.uuid4().hex[:8]) + "h=%d,t=%.2f,r=%d,c=%d" %(habitat_index, time, recovery, total)
     cv2.imwrite("images/%s.png" %hash_code, imp * 255)
 
 def rotate_image(image, angle):
@@ -256,8 +256,13 @@ if __name__ == "__main__":
                 crop_image_from_start_end(sp[0], sp[1], ep[0], ep[1], i, 0, time, recovery, total)
             # import pdb; pdb.set_trace()
     """
+    import argparse
 
-    habitat_index = 42
+    parser = argparse.ArgumentParser(description = 'Start condor training')
+    parser.add_argument('--habitat_index', dest='habitat_index', default=0)
+    args = parser.parse_args()
+
+    habitat_index = int(args.habitat_index)
     sp, ep = sample_start_goal_position(habitat_index)
     print(sp, ep)
     with open("configs/dwa_habitat.yaml") as f:
@@ -273,7 +278,7 @@ if __name__ == "__main__":
     env.reset()
     done = False
     start_pos = env.gazebo_sim.get_model_state().pose.position
-    start_time = 0
+    start_time = rospy.get_time()
 
     spots = []
 
@@ -286,7 +291,6 @@ if __name__ == "__main__":
             time = end_time - start_time
             recovery, total = env.move_base.get_bad_vel_num()
 
-            print(start_pos, "\n", end_pos, "\n", time, recovery)  # append as a spot
             crop_image_from_start_end(start_pos.x, start_pos.y, end_pos.x, end_pos.y, habitat_index, time, recovery, total)
 
             start_pos = end_pos
