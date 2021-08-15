@@ -16,25 +16,33 @@ def elucidate_distance(pos1, pos2):
     x2, y2 = pos2.x, pos2.y
     return np.sqrt((x1 - x2) ** 2 + (y1 - y2) ** 2)
 
-def sim_pos_to_pixel_idx(x, y):
-    return int(x / 0.03), int(y / 0.03)
+def sim_pos_to_pixel_idx(x, y, lx, ly):
+    return int(x / 0.03), ly - int(y / 0.03)
 
-def crop_image_from_start_end(sx, sy, ex, ey, habitat_index, time, recovery, total):
+def crop_image_from_start_end(sx, sy, ex, ey, habitat_index, time, recovery, total, traj_pos):
     file = "jackal_helper/models/map_cropped_bw/" + "model%d.png" %habitat_index
     im = Image.open(file) 
     im = np.asarray(im, dtype=np.int8).T
-    sx, sy = sim_pos_to_pixel_idx(sx, sy)
-    ex, ey = sim_pos_to_pixel_idx(ex, ey)
     lx, ly = im.shape[0], im.shape[1]
-    sy, ey = ly - sy, ly - ey
+    sx, sy = sim_pos_to_pixel_idx(sx, sy, lx, ly)
+    ex, ey = sim_pos_to_pixel_idx(ex, ey, lx, ly)
     cx, cy = (sx + ex) // 2, (sy + ey) // 2
+
+    """  visual the trajectory, only for debugging
+    for tx, ty in traj_pos:
+        x, y = sim_pos_to_pixel_idx(tx, ty, lx, ly)
+        im[x, y] = 128
+
+    for x, y in zip(np.linspace(sx, ex, 10), np.linspace(sy, ey, 10)):
+        im[int(x), int(y)] = 128
+    """
 
     ll = max(max(cx, lx - cx), max(cy, ly - cy))
 
     imp = np.zeros((2 * ll, 2 * ll))
     imp[ll - cx: ll - cx + lx, ll - cy: ll - cy + ly] = im
 
-    angle = np.arctan2(ey - sy, ex - sx) / np.pi * 180
+    angle = - np.arctan2(ey - sy, ex - sx) / np.pi * 180
     imp = rotate_image(imp, angle)
     ix, iy = imp.shape[0], imp.shape[1]
     imp = imp[ix //2 - IM_SIZE // 2: ix //2 + IM_SIZE // 2, iy //2 - IM_SIZE // 2: iy //2 + IM_SIZE // 2]
@@ -278,6 +286,7 @@ if __name__ == "__main__":
     env.reset()
     done = False
     start_pos = env.gazebo_sim.get_model_state().pose.position
+    traj_pos = [(start_pos.x, start_pos.y)]
     start_time = rospy.get_time()
 
     spots = []
@@ -285,13 +294,14 @@ if __name__ == "__main__":
     while not done:
         _, _, done, info = env.step(env_config["kwargs"]["param_init"])
         robot_pos = env.gazebo_sim.get_model_state().pose.position
+        traj_pos.append((robot_pos.x, robot_pos.y))
         if elucidate_distance(robot_pos, start_pos) >= SIZE:  # or done:
             end_pos = robot_pos
             end_time = rospy.get_time()
             time = end_time - start_time
             recovery, total = env.move_base.get_bad_vel_num()
 
-            crop_image_from_start_end(start_pos.x, start_pos.y, end_pos.x, end_pos.y, habitat_index, time, recovery, total)
+            crop_image_from_start_end(start_pos.x, start_pos.y, end_pos.x, end_pos.y, habitat_index, time, recovery, total, traj_pos)
 
             start_pos = end_pos
             start_time = end_time
