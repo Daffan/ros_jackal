@@ -5,11 +5,12 @@ import rospy
 import cv2
 import uuid
 from PIL import Image
+from collections import deque, namedtuple
 
 from envs import registration
 
-SIZE = 5
-IM_SIZE = SIZE * 100 // 3
+SIZE = 4.5
+IM_SIZE = int(SIZE * 100) // 3
 
 def elucidate_distance(pos1, pos2):
     x1, y1 = pos1.x, pos1.y
@@ -285,9 +286,12 @@ if __name__ == "__main__":
 
     env.reset()
     done = False
+    pos_queue = deque(maxlen=3)
+    NodePosition = namedtuple('NodePosition', ['pos', 't', 'r', 'c'])
     start_pos = env.gazebo_sim.get_model_state().pose.position
     traj_pos = [(start_pos.x, start_pos.y)]
     start_time = rospy.get_time()
+    pos_queue.append(NodePosition(start_pos, start_time, 0, 0))
 
     spots = []
 
@@ -295,15 +299,20 @@ if __name__ == "__main__":
         _, _, done, info = env.step(env_config["kwargs"]["param_init"])
         robot_pos = env.gazebo_sim.get_model_state().pose.position
         traj_pos.append((robot_pos.x, robot_pos.y))
-        if elucidate_distance(robot_pos, start_pos) >= SIZE:  # or done:
-            end_pos = robot_pos
-            end_time = rospy.get_time()
-            time = end_time - start_time
+        if elucidate_distance(robot_pos, pos_queue[len(pos_queue) - 1].pos) >= SIZE / 2.0:  # or done:
+            time = rospy.get_time()
             recovery, total = env.move_base.get_bad_vel_num()
-
-            crop_image_from_start_end(start_pos.x, start_pos.y, end_pos.x, end_pos.y, habitat_index, time, recovery, total, traj_pos)
-
-            start_pos = end_pos
-            start_time = end_time
-            env.move_base.reset_vel_count()
+            pos_queue.append(NodePosition(robot_pos, time, recovery, total))
+            if len(pos_queue) == 3:
+                crop_image_from_start_end(
+                    pos_queue[0].pos.x,
+                    pos_queue[0].pos.y,
+                    pos_queue[-1].pos.x,
+                    pos_queue[-1].pos.y,
+                    habitat_index,
+                    pos_queue[-1].t - pos_queue[0].t,
+                    pos_queue[-1].r - pos_queue[0].r,
+                    pos_queue[-1].c - pos_queue[0].c,
+                    traj_pos
+                )
     env.close()
