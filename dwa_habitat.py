@@ -6,11 +6,11 @@ import cv2
 import uuid
 import sys
 from PIL import Image
+from collections import deque, namedtuple
 
 sys.path.append("td3")
 from envs import registration
 from train import initialize_policy
-from actor import load_policy
 
 SIZE = 4.5
 IM_SIZE = int(SIZE * 100) // 3
