@@ -4,12 +4,16 @@ import gym
 import rospy
 import cv2
 import uuid
+import sys
 from PIL import Image
 
+sys.path.append("td3")
 from envs import registration
+from train import initialize_policy
+from actor import load_policy
 
-SIZE = 5
-IM_SIZE = SIZE * 100 // 3
+SIZE = 4.5
+IM_SIZE = int(SIZE * 100) // 3
 
 def elucidate_distance(pos1, pos2):
     x1, y1 = pos1.x, pos1.y
@@ -19,7 +23,7 @@ def elucidate_distance(pos1, pos2):
 def sim_pos_to_pixel_idx(x, y, lx, ly):
     return int(x / 0.03), ly - int(y / 0.03)
 
-def crop_image_from_start_end(sx, sy, ex, ey, habitat_index, time, recovery, total, traj_pos):
+def crop_image_from_start_end(sx, sy, ex, ey, habitat_index, time, recovery, total, traj_pos, save):
     file = "jackal_helper/models/map_cropped_bw/" + "model%d.png" %habitat_index
     im = Image.open(file) 
     im = np.asarray(im, dtype=np.int8).T
@@ -48,7 +52,7 @@ def crop_image_from_start_end(sx, sy, ex, ey, habitat_index, time, recovery, tot
     imp = imp[ix //2 - IM_SIZE // 2: ix //2 + IM_SIZE // 2, iy //2 - IM_SIZE // 2: iy //2 + IM_SIZE // 2]
 
     hash_code = str(uuid.uuid4().hex[:8]) + "h=%d,t=%.2f,r=%d,c=%d" %(habitat_index, time, recovery, total)
-    cv2.imwrite("images/%s.png" %hash_code, imp * 255)
+    cv2.imwrite("%s/%s.png" %(save, hash_code), imp * 255)
 
 def rotate_image(image, angle):
     """
@@ -268,6 +272,8 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description = 'Start condor training')
     parser.add_argument('--habitat_index', dest='habitat_index', default=0)
+    parser.add_argument('--save', dest='save', default="images")
+    parser.add_argument('--applr', action="store_true")
     args = parser.parse_args()
 
     habitat_index = int(args.habitat_index)
@@ -283,8 +289,13 @@ if __name__ == "__main__":
 
     env = gym.make(env_config["env_id"], **env_config["kwargs"])
 
-    env.reset()
+    policy, _ = initialize_policy(config, env)
+    policy.load("data/td3_policy", "policy")
+    policy.exploration_noise = 0
+
+    obs = env.reset()
     done = False
+    step_count = 0
     start_pos = env.gazebo_sim.get_model_state().pose.position
     traj_pos = [(start_pos.x, start_pos.y)]
     start_time = rospy.get_time()
@@ -292,16 +303,22 @@ if __name__ == "__main__":
     spots = []
 
     while not done:
-        _, _, done, info = env.step(env_config["kwargs"]["param_init"])
+        if step_count % 5 == 0 and args.applr:  # dwa_habitat config has timestep = 0.2s, while the td3 policy is 1s
+            actions = policy.select_action(obs)
+            print(actions)
+        else:
+            actions = env_config["kwargs"]["param_init"]
+        obs, _, done, info = env.step(actions)
         robot_pos = env.gazebo_sim.get_model_state().pose.position
         traj_pos.append((robot_pos.x, robot_pos.y))
+        step_count += 1
         if elucidate_distance(robot_pos, start_pos) >= SIZE:  # or done:
             end_pos = robot_pos
             end_time = rospy.get_time()
             time = end_time - start_time
             recovery, total = env.move_base.get_bad_vel_num()
 
-            crop_image_from_start_end(start_pos.x, start_pos.y, end_pos.x, end_pos.y, habitat_index, time, recovery, total, traj_pos)
+            crop_image_from_start_end(start_pos.x, start_pos.y, end_pos.x, end_pos.y, habitat_index, time, recovery, total, traj_pos, args.save)
 
             start_pos = end_pos
             start_time = end_time
