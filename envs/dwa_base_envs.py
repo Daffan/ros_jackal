@@ -136,7 +136,7 @@ class DWABase(gym.Env):
             return robot_position.y > 11  # the special condition for BARN    
         else:
             self.goal_distance = np.sqrt(np.sum((robot_position - goal_position) ** 2))
-            return self.goal_distance < 1
+            return self.goal_distance < 0.4
 
     def _get_reward(self):
         rew = self.slack_reward
@@ -190,6 +190,7 @@ class DWABase(gym.Env):
         if world_name.startswith("BARN"):
             path_dir = join(self.BASE_PATH, "worlds", "BARN", "path_files")
             world_id = int(world_name.split('_')[-1].split('.')[0])
+            world_id = min(300, world_id)
             path = np.load(join(path_dir, 'path_%d.npy' % world_id))
             init_x, init_y = self._path_coord_to_gazebo_coord(*path[0])
             goal_x, goal_y = self._path_coord_to_gazebo_coord(*path[-1])
