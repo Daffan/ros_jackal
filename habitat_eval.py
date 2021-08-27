@@ -13,7 +13,7 @@ if __name__ == "__main__":
     parser.add_argument('--repeat', dest='repeat', default=1)
     args = parser.parse_args()
 
-    np.random.seed(args.seed)
+    np.random.seed(int(args.seed))
 
     habitat_index = int(args.habitat_index)
     sp, ep = sample_start_goal_position(habitat_index)
@@ -59,7 +59,7 @@ if __name__ == "__main__":
                     break
         recovery, total = env.move_base.get_bad_vel_num()
         with open(args.save, "a") as f:
-            f.write("%d %d %.4f %d %d %d\n" %(args.habitat_index, args.seed, info["time"], steps, recovery, info["success"]))
+            f.write("%d %d %.4f %d %d %d\n" %(int(args.habitat_index), int(args.seed), info["time"], steps, recovery, info["success"]))
 
     env.close()
 
