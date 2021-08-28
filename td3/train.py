@@ -145,6 +145,7 @@ def train(env, policy, buffer, config):
     n_iter = 0
     n_ep = 0
     epinfo_buf = collections.deque(maxlen=300)
+    world_ep_buf = collections.defaultdict(lambda: collections.deque(maxlen=20))
     t0 = time.time()
     while n_steps < training_args["max_step"]:
         # Linear decaying exploration noise from "start" -> "end"
@@ -156,6 +157,9 @@ def train(env, policy, buffer, config):
         n_iter += 1
         n_ep += len(epinfo)
         epinfo_buf.extend(epinfo)
+        for d in epinfo:
+            world = d["world"].split("/")[-1]
+            world_ep_buf[world].append(d)
 
         actor_grad_norms = []
         critic_grad_norms = []
@@ -175,6 +179,7 @@ def train(env, policy, buffer, config):
             "Episode_length": np.mean([epinfo["ep_len"] for epinfo in epinfo_buf]),
             "Success": np.mean([epinfo["success"] for epinfo in epinfo_buf]),
             "Time": np.mean([epinfo["ep_time"] for epinfo in epinfo_buf]),
+            "Collision": np.mean([epinfo["collision"] for epinfo in epinfo_buf]),
             "Actor_grad_norm": np.mean(actor_grad_norms),
             "Critic_grad_norm": np.mean(critic_grad_norms),
             "Actor_loss": np.mean(actor_losses),
@@ -190,6 +195,14 @@ def train(env, policy, buffer, config):
             for k in log.keys():
                 writer.add_scalar('train/' + k, log[k], global_step=n_steps)
             policy.save(save_path, "policy")
+
+            for k in world_ep_buf.keys():
+                writer.add_scalar(k + "/Episode_return", np.mean([epinfo["ep_rew"] for epinfo in world_ep_buf[k]]), global_step=n_steps)
+                writer.add_scalar(k + "/Episode_length", np.mean([epinfo["ep_len"] for epinfo in world_ep_buf[k]]), global_step=n_steps)
+                writer.add_scalar(k + "/Success", np.mean([epinfo["success"] for epinfo in world_ep_buf[k]]), global_step=n_steps)
+                writer.add_scalar(k + "/Time", np.mean([epinfo["ep_time"] for epinfo in world_ep_buf[k]]), global_step=n_steps)
+                writer.add_scalar(k + "/Collision", np.mean([epinfo["collision"] for epinfo in world_ep_buf[k]]), global_step=n_steps)
+
 
     if env_config["use_condor"]:
         BASE_PATH = os.getenv('BUFFER_PATH')

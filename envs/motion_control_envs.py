@@ -7,6 +7,11 @@ from geometry_msgs.msg import Twist
 
 from envs.dwa_base_envs import DWABase, DWABaseLaser, DWABaseCostmap, DWABaseCostmapResnet
 
+RANGE_DICT = {
+    "linear_velocity": [-0.2, 2],
+    "angular_velocity": [-3.14, 3.14],
+}
+
 class MotionControlContinuous(DWABase):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -14,8 +19,8 @@ class MotionControlContinuous(DWABase):
         self.params = None
         # same as the parameters to tune
         self.action_space = Box(
-            low=np.array([-0.2, -3.14]),
-            high=np.array([2, 3.14]),
+            low=np.array([RANGE_DICT["linear_velocity"][0], RANGE_DICT["angular_velocity"][0]]),
+            high=np.array([RANGE_DICT["linear_velocity"][1], RANGE_DICT["angular_velocity"][1]]),
             dtype=np.float32
         )
         self.move_base = self.launch_move_base(goal_position=self.goal_position, base_local_planner=self.base_local_planner)
@@ -35,6 +40,7 @@ class MotionControlContinuous(DWABase):
         self.start_time = rospy.get_time()
         obs = self._get_observation()
         self.gazebo_sim.pause()
+        self.collision_count = 0
         return obs
 
     def _get_info(self):

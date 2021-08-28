@@ -4,7 +4,8 @@ import numpy as np
 import sys
 from os.path import dirname, abspath
 sys.path.append(dirname(dirname(abspath(__file__))))
-from envs.parameter_tuning_envs import RANGE_DICT
+from envs.parameter_tuning_envs import RANGE_DICT as  PARAMS_RANGE_DICT
+from envs.motion_control_envs import RANGE_DICT as MOTION_RANGE_DICT
 
 class InfoEnv:
     """ The infomation environment contains observation space and action space infomation only
@@ -14,14 +15,14 @@ class InfoEnv:
         env_id = env_config["env_id"]
         if env_id.startswith("dwa_param_continuous"):
             action_space = Box(
-                low=np.array([RANGE_DICT[k][0] for k in env_config["kwargs"]["param_list"]]),
-                high=np.array([RANGE_DICT[k][1] for k in env_config["kwargs"]["param_list"]]),
+                low=np.array([PARAMS_RANGE_DICT[k][0] for k in env_config["kwargs"]["param_list"]]),
+                high=np.array([PARAMS_RANGE_DICT[k][1] for k in env_config["kwargs"]["param_list"]]),
                 dtype=np.float32
             )
         elif env_id.startswith("motion_control_continuous"):
             action_space = Box(
-                low=np.array([0.1, -3.14]),
-                high=np.array([2, 3.14]),
+                low=np.array([MOTION_RANGE_DICT["linear_velocity"][0], MOTION_RANGE_DICT["angular_velocity"][0]]),
+                high=np.array([MOTION_RANGE_DICT["linear_velocity"][1], MOTION_RANGE_DICT["angular_velocity"][1]]),
                 dtype=np.float32
             )
         else:

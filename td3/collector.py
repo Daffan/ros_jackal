@@ -101,7 +101,9 @@ class CondorCollector(object):
                                     ep_len = len(traj)
                                     success = float(traj[-1][-1]['success'])
                                     ep_time = traj[-1][-1]['time']
-                                    results.append(dict(ep_rew=ep_rew, ep_len=ep_len, success=success, ep_time=ep_time))
+                                    world = traj[-1][-1]['world']
+                                    collision = traj[-1][-1]['collision']
+                                    results.append(dict(ep_rew=ep_rew, ep_len=ep_len, success=success, ep_time=ep_time, world=world, collision=collision))
                                     self.buffer_expand(traj)
                                     steps += ep_len
                             os.remove(join(base, p))

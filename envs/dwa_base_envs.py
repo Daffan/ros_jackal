@@ -68,7 +68,7 @@ class DWABase(gym.Env):
 
         self._set_start_goal_BARN(self.world_name)  # overwrite the starting goal if use BARN dataset
         self.gazebo_sim = GazeboSimulation(init_position=self.init_position)
-        # self.move_base = self.launch_move_base(goal_position=self.goal_position, base_local_planner=self.base_local_planner)
+        self.move_base = self.launch_move_base(goal_position=self.goal_position, base_local_planner=self.base_local_planner)
 
         # Not implemented
         self.action_space = None
@@ -107,12 +107,13 @@ class DWABase(gym.Env):
         self.start_time = rospy.get_time()
         obs = self._get_observation()
         self.gazebo_sim.pause()
+        self.collision_count = 0
         return obs
 
     def _reset_move_base(self):
         # reset the move_base
-        self.kill_move_base()
-        self.move_base = self.launch_move_base(goal_position=self.goal_position, base_local_planner=self.base_local_planner)
+        # self.kill_move_base()
+        # self.move_base = self.launch_move_base(goal_position=self.goal_position, base_local_planner=self.base_local_planner)
         self.move_base.reset_robot_in_odom()
         self._clear_costmap()
         self.move_base.set_global_goal()
@@ -178,10 +179,11 @@ class DWABase(gym.Env):
 
     def _get_info(self):
         bn, nn = self.move_base.get_bad_vel_num()
+        self.collision_count += self.move_base.get_collision()
         return dict(
             world=self.world_name,
             time=rospy.get_time() - self.start_time,
-            collision=self.move_base.get_collision(),
+            collision=self.collision_count,
             recovery=1.0 * bn / nn
         )
 
