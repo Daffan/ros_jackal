@@ -23,13 +23,12 @@ class MotionControlContinuous(DWABase):
             high=np.array([RANGE_DICT["linear_velocity"][1], RANGE_DICT["angular_velocity"][1]]),
             dtype=np.float32
         )
-        self.move_base = self.launch_move_base(goal_position=self.goal_position, base_local_planner=self.base_local_planner)
 
     def reset(self):
         """reset the environment without setting the goal
         set_goal is replaced with make_plan
         """
-        self.step_count=0
+        self.step_count = 0
         # Reset robot in odom frame clear_costmap
         self.gazebo_sim.unpause()
         self.move_base.reset_robot_in_odom()
@@ -41,6 +40,8 @@ class MotionControlContinuous(DWABase):
         obs = self._get_observation()
         self.gazebo_sim.pause()
         self.collision_count = 0
+        self.traj_pos = []
+        self.smoothness = 0
         return obs
 
     def _get_info(self):

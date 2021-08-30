@@ -28,6 +28,7 @@ class DWABase(gym.Env):
         failure_reward=-50,
         success_reward=0,
         collision_reward=0,
+        smoothness_reward=0,
         verbose=True
     ):
         """Base RL env that initialize jackal simulation in Gazebo
@@ -46,6 +47,7 @@ class DWABase(gym.Env):
         self.failure_reward = failure_reward
         self.success_reward = success_reward
         self.collision_reward = collision_reward
+        self.smoothness_reward = smoothness_reward
 
         # launch gazebo and dwa demo
         rospy.logwarn(">>>>>>>>>>>>>>>>>> Load world: %s <<<<<<<<<<<<<<<<<<" %(world_name))
@@ -73,13 +75,13 @@ class DWABase(gym.Env):
         # Not implemented
         self.action_space = None
         self.observation_space = None
-        self.move_base = None
         self.reward_range = (
             min(slack_reward, failure_reward), 
             success_reward
         )
 
         self.step_count = 0
+        self.traj_pos = None
 
     def launch_move_base(self, goal_position, base_local_planner):
         rospack = rospkg.RosPack()
@@ -108,6 +110,8 @@ class DWABase(gym.Env):
         obs = self._get_observation()
         self.gazebo_sim.pause()
         self.collision_count = 0
+        self.traj_pos = []
+        self.smoothness = 0
         return obs
 
     def _reset_move_base(self):
@@ -136,6 +140,8 @@ class DWABase(gym.Env):
         done = self._get_done()
         info = self._get_info()
         self.gazebo_sim.pause()
+        pos = self.gazebo_sim.get_model_state().pose.position
+        self.traj_pos.append((pos.x, pos.y))
         return obs, rew, done, info
 
     def _take_action(self, action):
@@ -166,7 +172,23 @@ class DWABase(gym.Env):
         d = np.mean(sorted(laser_scan)[:10])
         if d < 0.3:  # minimum distance 0.3 meter 
             rew += self.collision_reward / (d + 0.05)
+        smoothness = self._compute_angle(len(self.traj_pos) - 1)
+        rew += self.smoothness_reward * smoothness
+        self.smoothness += smoothness
         return rew
+
+    def _compute_angle(self, idx):
+        def dis(x1, y1, x2, y2):
+            return np.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
+        assert self.traj_pos is not None
+        if len(self.traj_pos) > 2:
+            x1, y1 = self.traj_pos[idx - 2]
+            x2, y2 = self.traj_pos[idx - 1]
+            x3, y3 = self.traj_pos[idx]
+            a = - np.arccos(((x2 - x1) * (x3 - x2) + (y2 - y1) * (y3 - y2)) / dis(x1, y1, x2, y2) / dis(x2, y2, x3, y3))
+        else:
+            a = 0
+        return a
 
     def _get_done(self):
         success = self._get_success()
@@ -184,7 +206,8 @@ class DWABase(gym.Env):
             world=self.world_name,
             time=rospy.get_time() - self.start_time,
             collision=self.collision_count,
-            recovery=1.0 * bn / nn
+            recovery=1.0 * bn / nn,
+            smoothness=self.smoothness
         )
 
     def _get_local_goal(self):
