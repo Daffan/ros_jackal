@@ -22,7 +22,7 @@ if __name__ == "__main__":
     avg_time = []
     avg_success = []
     for k in sorted(time.keys()):
-        print("habitat: %d, time: %.4f, success: %.2f, (%d/%d)" %(k, np.mean(time[k]), np.mean(success[k]), len(time[k]), len(success[k])))
+        print("habitat: %d, time: %.4f, success: %.2f, (%d/%d)" %(k, np.mean(time[k]), np.sum(success[k])/25., len(time[k]), len(success[k])))
         avg_time.append(np.mean(time[k]))
-        avg_success.append(np.mean(success[k]))
+        avg_success.append(np.sum(success[k])/25.)
     print("Average time: %.4f, average success: %.2f" %(np.mean(avg_time), np.mean(avg_success)))
