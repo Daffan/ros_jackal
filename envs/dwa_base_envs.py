@@ -136,7 +136,7 @@ class DWABase(gym.Env):
             return robot_position.y > 11  # the special condition for BARN    
         else:
             self.goal_distance = np.sqrt(np.sum((robot_position - goal_position) ** 2))
-            return self.goal_distance < 0.4
+            return self.goal_distance < 1
 
     def _get_reward(self):
         rew = self.slack_reward

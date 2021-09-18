@@ -13,7 +13,7 @@ import uuid
 import argparse
 
 parser = argparse.ArgumentParser(description = 'run DWA in habitat env and generate images')
-parser.add_argument('--n_repeat', dest='n_repeat', default=5)
+parser.add_argument('--n_repeat', dest='n_repeat', default=20)
 parser.add_argument('--applr', dest='applr', default="")
 parser.add_argument('--save', dest='save', default="test_result.txt")
 args = parser.parse_args()
@@ -39,7 +39,9 @@ cfile.write(common_command)
 # Add actor arguments
 for _ in range(n_repeat):
     for a in [66, 68, 69, 70, 71]:
-        for s in range(5):
+        for s in range(1):
+            if a == 68:
+                s += 1
             run_command = "\
                 arguments  = %d %d %s %s\n\
                 queue 1\n\n" % (a, s, args.save, args.applr)
