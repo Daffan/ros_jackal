@@ -30,6 +30,7 @@ training_config:
   exploration_noise_end: 0.05
   pre_collect: 4096
   log_intervals: 2
+  pre_train: ""
 
   policy_args:
     tau: 0.005
