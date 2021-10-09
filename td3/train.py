@@ -133,8 +133,8 @@ def initialize_policy(config, env):
     input_dim += np.prod(action_dim)
     critic = Critic(
         state_preprocess=get_encoder(encoder_type, encoder_args),
-        head=MLP(input_dim, 2, training_config['hidden_layer_size'])
-        head=nn.Identity(),
+        head=MLP(input_dim, 2, training_config['hidden_layer_size']),
+        #head=nn.Identity(),
     ).to(device)
     critic_optim = torch.optim.Adam(
         critic.parameters(), 
