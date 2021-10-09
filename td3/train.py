@@ -20,7 +20,7 @@ sys.path.append(dirname(dirname(abspath(__file__))))
 from envs import registration
 from envs.wrappers import ShapingRewardWrapper, StackFrame
 from information_envs import InfoEnv
-from net import MLP, CNN
+from net import *
 from td3 import Actor, Critic, TD3, ReplayBuffer
 from collector import CondorCollector, LocalCollector
 
@@ -80,6 +80,19 @@ def seed(config):
     np.random.seed(env_config['seed'])
     torch.manual_seed(env_config['seed'])
 
+def get_encoder(encoder_type, args):
+    if encoder_type == "mlp":
+        encoder=MLPEncoder(**args)
+    elif encoder_type == 'rnn':
+        encoder=RNNEncoder(**args)
+    elif encoder_type == 'cnn':
+        encoder=CNNEncoder(**args)
+    elif encoder_type == 'transformer':
+        encoder=TransformerEncoder(**args)
+    else:
+        raise Exception(f"[error] Unknown encoder type {encoder_type}!")
+    return encoder
+
 def initialize_policy(config, env):
     training_config = config["training_config"]
 
@@ -91,11 +104,20 @@ def initialize_policy(config, env):
     device = "cuda:%d" %(devices[0]) if len(devices) > 0 else "cpu"
     print("    >>>> Running on device %s" %(device))
 
-    state_preprocess = CNN(config["env_config"]["stack_frame"]) if training_config["network"] == "cnn" else None
-    input_dim = state_preprocess.feature_dim if state_preprocess else np.prod(state_dim) 
+    encoder_type = training_config["encoder"]
+    encoder_args = {
+        'input_dim': np.prod(state_dim),
+        'num_layers': training_config['num_layers'],
+        'hidden_size': training_config['hidden_layer_size'],
+        'history_length': config["env_config"]["stack_frame"],
+    }
+
+    input_dim = training_config['hidden_layer_size']
     actor = Actor(
-        state_preprocess=state_preprocess,
-        head=MLP(input_dim, training_config['num_layers'], training_config['hidden_layer_size']),
+        #state_preprocess=state_preprocess,
+        state_preprocess=get_encoder(encoder_type, encoder_args),
+        head=MLP(input_dim, 2, training_config['hidden_layer_size']),
+        #head=nn.Identity(),
         action_dim=action_dim
     ).to(device)
     actor_optim = torch.optim.Adam(
@@ -103,11 +125,16 @@ def initialize_policy(config, env):
         lr=training_config['actor_lr']
     )
 
-    state_preprocess = CNN(config["env_config"]["stack_frame"]) if training_config["network"] == "cnn" else None
+    #x = torch.rand(10, config["env_config"]["stack_frame"], np.prod(state_dim)).cuda()
+    #import pdb; pdb.set_trace()
+    #y = actor(x)
+
+    #state_preprocess = CNN(config["env_config"]["stack_frame"]) if training_config["network"] == "cnn" else None
     input_dim += np.prod(action_dim)
     critic = Critic(
-        state_preprocess,
-        head=MLP(input_dim, training_config['num_layers'], training_config['hidden_layer_size'])
+        state_preprocess=get_encoder(encoder_type, encoder_args),
+        head=MLP(input_dim, 2, training_config['hidden_layer_size'])
+        head=nn.Identity(),
     ).to(device)
     critic_optim = torch.optim.Adam(
         critic.parameters(), 

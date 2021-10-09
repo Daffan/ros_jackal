@@ -3,7 +3,7 @@ env_config:
   env_id: "motion_control_continuous_laser-v0"
   seed: 13
   shaping_reward: True
-  stack_frame: 1
+  stack_frame: 4
   kwargs:
     world_name: "world_0.world"
     gui: false
@@ -21,6 +21,7 @@ env_config:
 training_config:
   algorithm: "TD3"
   network: "mlp"
+  encoder: "cnn"
   buffer_size: 200000
   actor_lr: 0.00001
   critic_lr: 0.00002

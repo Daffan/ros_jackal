@@ -14,7 +14,7 @@ class Actor(nn.Module):
 
         self.state_preprocess = state_preprocess
         self.head = head
-        self.fc = nn.Linear(self.head.feature_dim, action_dim)
+        self.fc = nn.Linear(self.state_preprocess.feature_dim, action_dim)
 
     def forward(self, state):
         a = self.state_preprocess(state) if self.state_preprocess else state
@@ -29,12 +29,12 @@ class Critic(nn.Module):
         # Q1 architecture
         self.state_preprocess1 = state_preprocess
         self.head1 = head
-        self.fc1 = nn.Linear(self.head1.feature_dim, 1)
+        self.fc1 = nn.Linear(self.state_preprocess.feature_dim, 1)
 
         # Q2 architecture
         self.state_preprocess2 = copy.deepcopy(state_preprocess)
         self.head2 = copy.deepcopy(head)
-        self.fc2 = nn.Linear(self.head2.feature_dim, 1)
+        self.fc2 = nn.Linear(self.state_preprocess.feature_dim, 1)
 
     def forward(self, state, action):
         state1 = self.state_preprocess1(
