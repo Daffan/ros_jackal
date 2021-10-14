@@ -94,7 +94,6 @@ for a in range(num_actor):
         error      = %s/err_%d.txt\n\
         queue 1\n\n" % (a, out_path, a, out_path, a, out_path, a)
     cfile.write(run_command)
-cfile.close()
 
 # Add actor arguments
 for a in range(num_actor):
