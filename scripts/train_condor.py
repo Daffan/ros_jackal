@@ -84,7 +84,7 @@ common_command = "\
     getenv              = true\n\
     transfer_executable = false \n\n" %(s)
 cfile.write(common_command)
-'''
+
 # Add actor arguments
 for a in range(num_actor):
     run_command = "\
@@ -95,7 +95,7 @@ for a in range(num_actor):
         queue 1\n\n" % (a, out_path, a, out_path, a, out_path, a)
     cfile.write(run_command)
 cfile.close()
-'''
+
 # Add actor arguments
 for a in range(num_actor):
     run_command = "\
