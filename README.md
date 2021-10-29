@@ -31,6 +31,14 @@ Test installation: the script runs the `dwa_param_continuous_laser-v0` environme
 ```
 python3 script/test_env.py
 ```
+Deploy APPLR policy (https://arxiv.org/pdf/2011.00397.pdf)
+```
+python3 scripts/test_param_policy.py --gui --verbose --repeats 5 --policy_path data/param_policy --world_id 0
+```
+Deploy default DWA navigation stack
+```
+python3 scripts/test_param_policy.py --gui --verbose --repeats 5 --policy_path data/param_policy --world_id 0 --default_dwa
+```
 
 # Singularity container
 Build the image
