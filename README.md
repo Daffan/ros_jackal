@@ -7,7 +7,7 @@ Create workspace
 mkdir -p jackal_ws/src
 cd jackal_ws/src
 ```
-Clone the repo and install the python dependencies
+Clone the repo and install the python dependencies (in your virtual environment if needed)
 ```
 git clone https://github.com/Daffan/ros_jackal.git; cd ros_jackal
 pip3 install -r requirements.txt
