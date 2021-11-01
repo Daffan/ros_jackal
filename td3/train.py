@@ -149,6 +149,9 @@ def initialize_policy(config, env):
         **training_config["policy_args"]
     )
 
+    if "pre_train" in training_config.keys() and training_config["pre_train"]:
+        policy.load(training_config["pre_train"], "policy")
+
     buffer = ReplayBuffer(state_dim, action_dim, training_config['buffer_size'], device=device)
 
     return policy, buffer

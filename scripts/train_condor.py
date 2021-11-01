@@ -95,12 +95,6 @@ for a in range(num_actor):
         queue 1\n\n" % (a, out_path, a, out_path, a, out_path, a)
     cfile.write(run_command)
 
-# Add actor arguments
-for a in range(num_actor):
-    run_command = "\
-        arguments  = %d\n\
-        queue 1\n\n" % (a)
-    cfile.write(run_command)
 cfile.close()
 
 subprocess.run(["condor_submit", submission_file])

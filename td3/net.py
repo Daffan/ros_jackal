@@ -48,7 +48,7 @@ class MLPEncoder(Encoder):
 
         layers = []
         for i in range(num_layers):
-            input_dim = hidden_layer_size if i > 0 else input_dim*history_length
+            input_dim = hidden_size if i > 0 else input_dim * history_length
             layers.append(nn.Linear(input_dim, hidden_size))
             layers.append(nn.ReLU())
 

@@ -29,6 +29,7 @@ class DWABase(gym.Env):
         success_reward=0,
         collision_reward=0,
         smoothness_reward=0,
+        max_collision=10000,
         verbose=True
     ):
         """Base RL env that initialize jackal simulation in Gazebo
@@ -48,6 +49,7 @@ class DWABase(gym.Env):
         self.success_reward = success_reward
         self.collision_reward = collision_reward
         self.smoothness_reward = smoothness_reward
+        self.max_collision = max_collision
 
         # launch gazebo and dwa demo
         rospy.logwarn(">>>>>>>>>>>>>>>>>> Load world: %s <<<<<<<<<<<<<<<<<<" %(world_name))
@@ -165,9 +167,9 @@ class DWABase(gym.Env):
     def _get_reward(self):
         rew = self.slack_reward
         if self.step_count >= self.max_step:  # or self._get_flip_status():
-            rew = self.failure_reward
+            rew += self.failure_reward
         if self._get_success():
-            rew = self.success_reward
+            rew += self.success_reward
         laser_scan = np.array(self.move_base.get_laser_scan().ranges)
         d = np.mean(sorted(laser_scan)[:10])
         if d < 0.3:  # minimum distance 0.3 meter 
@@ -192,7 +194,7 @@ class DWABase(gym.Env):
 
     def _get_done(self):
         success = self._get_success()
-        done = success or self.step_count >= self.max_step or self._get_flip_status()
+        done = success or self.step_count >= self.max_step or self._get_flip_status() or self.collision_count > self.max_collision
         return done
 
     def _get_flip_status(self):
