@@ -62,6 +62,28 @@ class Critic(nn.Module):
         return q1
 
 
+class Model(nn.Module):
+    def __init__(self, state_preprocess, head, state_dim):
+        super(Model, self).__init__()
+        self.state_preprocess = state_preprocess
+        self.head = head
+        self.state_dim = state_dim
+
+        self.state_fc = nn.Linear(head.feature_dim, state_dim)
+        self.reward_fc = nn.Linear(head.feature_dim, 1)
+        self.done_fc = nn.Linear(head.feature_dim, 1)
+
+    def forward(self, state, action):
+        s = self.state_preprocess(state) if self.state_preprocess else state
+        sa = torch.cat([s, action], 1)
+        x = self.head(sa)
+        s = self.state_fc(x)
+        r = self.reward_fc(x)
+        d = F.sigmoid(self.done_fc(x))
+
+        return s, r, d
+
+
 class TD3(object):
     def __init__(
             self,
@@ -112,14 +134,15 @@ class TD3(object):
         action += self._action_bias.cpu().data.numpy()
         return action
 
-    def train(self, replay_buffer, batch_size=256):
-        self.total_it += 1
-
+    def sample_transition(self, replay_buffer, batch_size=256):
         # Sample replay buffer ("task" for multi-task learning)
         state, action, next_state, reward, not_done, task, ind = replay_buffer.sample(
             batch_size)
-
         next_state, reward, not_done, gammas = replay_buffer.n_step_return(self.n_step, ind, self.gamma)
+        return state, action, next_state, reward, not_done, gammas
+
+    def train_rl(self, state, action, next_state, reward, not_done, gammas):
+        self.total_it += 1
 
         with torch.no_grad():
             # Select action according to policy and add clipped noise
@@ -171,7 +194,18 @@ class TD3(object):
 
         actor_loss = actor_loss.item() if actor_loss is not None else None
         critic_loss = critic_loss.item()
-        return self.grad_norm(self.actor), self.grad_norm(self.critic), actor_loss, critic_loss
+        return {
+            "Actor_grad_norm": self.grad_norm(self.actor),
+            "Critic_grad_norm": self.grad_norm(self.critic),
+            "Actor_loss": actor_loss,
+            "Critic_loss": critic_loss
+        }
+
+    def train(self, replay_buffer, batch_size=256):
+        state, action, next_state, reward, not_done, gammas = self.sample_transition(replay_buffer, batch_size)
+        loss_info = self.train_rl(state, action, next_state, reward, not_done, gammas)
+        return loss_info
+
 
     def grad_norm(self, model):
         total_norm = 0
@@ -197,6 +231,72 @@ class TD3(object):
             self.exploration_noise = pickle.load(f)
 
 
+class DynaTD3(TD3):
+    def __init__(self, model, model_optm, n_simulated_update, *args, **kw_args):
+        self.model = model
+        self.model_optimizer = model_optm
+        self.n_simulated_update = n_simulated_update
+        self.loss_function = nn.MSELoss()
+        super().__init__(*args, **kw_args)
+
+    def train_model(self, replay_buffer, batch_size=256):
+        state, action, next_state, reward, not_done, _, _ = replay_buffer.sample(batch_size)
+        action -= self._action_bias
+        action /= self._action_scale
+        done = 1 - not_done
+        pred_next_state, pred_reward, pred_done = self.model(state, action)
+
+        state_loss = self.loss_function(pred_next_state, next_state)
+        reward_loss = self.loss_function(pred_reward, reward)
+        done_loss = self.loss_function(pred_done, done)
+
+        loss = state_loss + reward_loss + done_loss
+
+        self.model_optimizer.zero_grad()
+        loss.backward()
+        self.model_optimizer.step()
+        return {
+            "Model_loss": loss.item(),
+            "Model_grad_norm": self.grad_norm(self.model)
+        }
+
+    def simulate_transition(self, replay_buffer, batch_size=256):
+        state, action, next_state, reward, *_ = replay_buffer.sample(batch_size)
+        total_reward = torch.zeros(reward.shape).to(self.device)
+        with torch.no_grad():
+            for i in range(self.n_step):
+                next_action = self.actor_target(state)
+                next_action += torch.randn_like(next_action, dtype=torch.float32) * self.exploration_noise  # exploration noise
+                if i == 0:
+                    action = next_action
+                next_state, reward, done = self.model(state, next_action)
+                reward = (reward - replay_buffer.mean) / replay_buffer.std  # reward normalization 
+                total_reward = reward + total_reward * self.gamma
+
+        return state, action, next_state, reward, 1 - done, self.gamma ** (i + 1)
+
+    def train(self, replay_buffer, batch_size=256):
+        rl_loss_info = super().train(replay_buffer, batch_size)
+        model_loss_info = self.train_model(replay_buffer, batch_size)
+
+        simulated_rl_loss_infos = []
+        for _ in range(self.n_simulated_update):
+            state, action, next_state, reward, not_done, gammas = self.simulate_transition(replay_buffer, batch_size)
+            simulated_rl_loss_info = self.train_rl(state, action, next_state, reward, not_done, gammas)
+            simulated_rl_loss_infos.append(simulated_rl_loss_info)
+
+        simulated_rl_loss_info = {}
+        for k in simulated_rl_loss_infos[0].keys():
+            simulated_rl_loss_info["simulated" + k] = np.mean([li[k] for li in simulated_rl_loss_infos if li[k] is not None])
+
+        loss_info = {}
+        loss_info.update(rl_loss_info)
+        loss_info.update(model_loss_info)
+        loss_info.update(simulated_rl_loss_info)
+
+        return loss_info
+
+
 class ReplayBuffer(object):
     def __init__(self, state_dim, action_dim, max_size=int(1e6), device="cpu"):
         self.max_size = max_size
@@ -211,6 +311,10 @@ class ReplayBuffer(object):
         self.not_done = np.zeros((max_size, 1))
         self.task = np.zeros((max_size, 1))
 
+        # Reward normalization
+        self.mean = None
+        self.std = None
+
         self.device = device
 
     def add(self, state, action, next_state, reward, done, task):
@@ -224,7 +328,7 @@ class ReplayBuffer(object):
         self.ptr = (self.ptr + 1) % self.max_size
         self.size = min(self.size + 1, self.max_size)
 
-        if self.ptr == 1000:
+        if self.ptr == 1000:  # and self.mean is None:
             rew = self.reward[:1000]
             self.mean, self.std = rew.mean(), rew.std()
             if np.isclose(self.std, 0, 1e-2):
