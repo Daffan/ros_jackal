@@ -3,7 +3,7 @@ env_config:
   env_id: "motion_control_continuous_laser-v0"
   seed: 13
   shaping_reward: True
-  stack_frame: 4
+  stack_frame: 1
   kwargs:
     world_name: "world_0.world"
     gui: false
@@ -25,12 +25,15 @@ training_config:
   buffer_size: 200000
   actor_lr: 0.00001
   critic_lr: 0.00002
-  num_layers: 2
+  num_layers: 1
   hidden_layer_size: 512
   exploration_noise_start: 0.2
   exploration_noise_end: 0.05
-  pre_collect: 4096
+  pre_collect: 0
   log_intervals: 2
+  dyna_style: True
+  n_simulated_update: 10
+  model_lr: 0.0001
 
   policy_args:
     tau: 0.005
