@@ -175,8 +175,9 @@ class DWABase(gym.Env):
         if d < 0.3:  # minimum distance 0.3 meter 
             rew += self.collision_reward / (d + 0.05)
         smoothness = self._compute_angle(len(self.traj_pos) - 1)
-        rew += self.smoothness_reward * smoothness
         self.smoothness += smoothness
+        if self.smoothness_reward > 0:
+            rew += self.smoothness_reward * smoothness
         return rew
 
     def _compute_angle(self, idx):
@@ -234,14 +235,15 @@ class DWABase(gym.Env):
         if world_name.startswith("BARN"):
             path_dir = join(self.BASE_PATH, "worlds", "BARN", "path_files")
             world_id = int(world_name.split('_')[-1].split('.')[0])
-            path = np.load(join(path_dir, 'path_%d.npy' % world_id))
-            init_x, init_y = self._path_coord_to_gazebo_coord(*path[0])
-            goal_x, goal_y = self._path_coord_to_gazebo_coord(*path[-1])
-            init_y -= 1
-            goal_x -= init_x
-            goal_y -= (init_y-5) # put the goal 5 meters backward
-            self.init_position = [init_x, init_y, np.pi/2]
-            self.goal_position = [goal_x, goal_y, 0]
+            if os.path.exists(join(path_dir, 'path_%d.npy' % world_id)):
+                path = np.load(join(path_dir, 'path_%d.npy' % world_id))
+                init_x, init_y = self._path_coord_to_gazebo_coord(*path[0])
+                goal_x, goal_y = self._path_coord_to_gazebo_coord(*path[-1])
+                init_y -= 1
+                goal_x -= init_x
+                goal_y -= (init_y-5) # put the goal 5 meters backward
+                self.init_position = [init_x, init_y, np.pi/2]
+                self.goal_position = [goal_x, goal_y, 0]
 
     def _path_coord_to_gazebo_coord(self, x, y):
         RADIUS = 0.075

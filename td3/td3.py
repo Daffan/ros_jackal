@@ -331,7 +331,7 @@ class ReplayBuffer(object):
         if self.ptr == 1000:  # and self.mean is None:
             rew = self.reward[:1000]
             self.mean, self.std = rew.mean(), rew.std()
-            if np.isclose(self.std, 0, 1e-2):
+            if np.isclose(self.std, 0, 1e-2) or self.std is None:
                 self.mean, self.std = 0.0, 1.0
 
     def sample(self, batch_size):
@@ -356,6 +356,8 @@ class ReplayBuffer(object):
             r = 0
             for _ in range(n_step):
                 idx = (i + n) % self.size
+                assert self.mean is not None
+                assert self.std is not None
                 r += (self.reward[idx] - self.mean) / self.std * gamma ** n
                 if not self.not_done[idx]:
                     break

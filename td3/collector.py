@@ -103,6 +103,7 @@ class CondorCollector(object):
                                     ep_time = traj[-1][-1]['time']
                                     world = traj[-1][-1]['world']
                                     collision = traj[-1][-1]['collision']
+                                    assert not np.isnan(ep_rew), "%s" %target
                                     results.append(dict(ep_rew=ep_rew, ep_len=ep_len, success=success, ep_time=ep_time, world=world, collision=collision))
                                     self.buffer_expand(traj)
                                     steps += ep_len

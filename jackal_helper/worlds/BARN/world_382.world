@@ -138,7 +138,7 @@
         <gravity>1</gravity>
       </link>
     </model>
-    <actor name="B2T_0.3_0">
+    <actor name="B2T_1.3_0">
       <link name="box_link">
         <visual name="visual">
           <geometry>
@@ -155,16 +155,16 @@
         <trajectory id="0" type="square">
            <waypoint>
               <time>0.00</time>
-              <pose>-1.10 5.00 0 0 0 0</pose>
+              <pose>-3.17 5.00 0 0 0 0</pose>
            </waypoint>
            <waypoint>
-              <time>15.00</time>
-              <pose>-1.16 9.50 0 0 0 0</pose>
+              <time>3.80</time>
+              <pose>-0.86 9.50 0 0 0 0</pose>
            </waypoint>
         </trajectory>
       </script>
     </actor>
-    <actor name="R2L_1.3_1">
+    <actor name="L2R_1.6_1">
       <link name="box_link">
         <visual name="visual">
           <geometry>
@@ -181,16 +181,16 @@
         <trajectory id="0" type="square">
            <waypoint>
               <time>0.00</time>
-              <pose>-4.50 9.44 0 0 0 0</pose>
+              <pose>0.00 7.47 0 0 0 0</pose>
            </waypoint>
            <waypoint>
-              <time>3.48</time>
-              <pose>0.00 8.93 0 0 0 0</pose>
+              <time>2.98</time>
+              <pose>-4.50 6.03 0 0 0 0</pose>
            </waypoint>
         </trajectory>
       </script>
     </actor>
-    <actor name="T2B_1.5_2">
+    <actor name="L2R_1.1_2">
       <link name="box_link">
         <visual name="visual">
           <geometry>
@@ -207,16 +207,16 @@
         <trajectory id="0" type="square">
            <waypoint>
               <time>0.00</time>
-              <pose>-1.78 9.50 0 0 0 0</pose>
+              <pose>0.00 7.05 0 0 0 0</pose>
            </waypoint>
            <waypoint>
-              <time>3.09</time>
-              <pose>-0.65 5.00 0 0 0 0</pose>
+              <time>4.28</time>
+              <pose>-4.50 5.77 0 0 0 0</pose>
            </waypoint>
         </trajectory>
       </script>
     </actor>
-    <actor name="B2T_1.3_3">
+    <actor name="B2T_0.5_3">
       <link name="box_link">
         <visual name="visual">
           <geometry>
@@ -233,16 +233,16 @@
         <trajectory id="0" type="square">
            <waypoint>
               <time>0.00</time>
-              <pose>-4.12 5.00 0 0 0 0</pose>
+              <pose>-1.37 5.00 0 0 0 0</pose>
            </waypoint>
            <waypoint>
-              <time>3.90</time>
-              <pose>-1.78 9.50 0 0 0 0</pose>
+              <time>9.27</time>
+              <pose>-2.05 9.50 0 0 0 0</pose>
            </waypoint>
         </trajectory>
       </script>
     </actor>
-    <actor name="L2R_1.5_4">
+    <actor name="R2L_0.5_4">
       <link name="box_link">
         <visual name="visual">
           <geometry>
@@ -259,11 +259,141 @@
         <trajectory id="0" type="square">
            <waypoint>
               <time>0.00</time>
-              <pose>0.00 6.42 0 0 0 0</pose>
+              <pose>-4.50 6.74 0 0 0 0</pose>
            </waypoint>
            <waypoint>
-              <time>3.01</time>
-              <pose>-4.50 6.77 0 0 0 0</pose>
+              <time>10.26</time>
+              <pose>0.00 9.46 0 0 0 0</pose>
+           </waypoint>
+        </trajectory>
+      </script>
+    </actor>
+    <actor name="T2B_1.0_5">
+      <link name="box_link">
+        <visual name="visual">
+          <geometry>
+            <cylinder>
+              <radius>0.075000</radius>
+              <length>0.8</length>
+            </cylinder>
+          </geometry>
+        </visual>
+      </link>
+      <script>
+        <loop>true</loop>
+        <auto_start>true</auto_start>
+        <trajectory id="0" type="square">
+           <waypoint>
+              <time>0.00</time>
+              <pose>-3.37 9.50 0 0 0 0</pose>
+           </waypoint>
+           <waypoint>
+              <time>4.38</time>
+              <pose>-4.13 5.00 0 0 0 0</pose>
+           </waypoint>
+        </trajectory>
+      </script>
+    </actor>
+    <actor name="R2L_1.2_6">
+      <link name="box_link">
+        <visual name="visual">
+          <geometry>
+            <cylinder>
+              <radius>0.075000</radius>
+              <length>0.8</length>
+            </cylinder>
+          </geometry>
+        </visual>
+      </link>
+      <script>
+        <loop>true</loop>
+        <auto_start>true</auto_start>
+        <trajectory id="0" type="square">
+           <waypoint>
+              <time>0.00</time>
+              <pose>-4.50 7.72 0 0 0 0</pose>
+           </waypoint>
+           <waypoint>
+              <time>3.75</time>
+              <pose>0.00 8.83 0 0 0 0</pose>
+           </waypoint>
+        </trajectory>
+      </script>
+    </actor>
+    <actor name="T2B_1.3_7">
+      <link name="box_link">
+        <visual name="visual">
+          <geometry>
+            <cylinder>
+              <radius>0.075000</radius>
+              <length>0.8</length>
+            </cylinder>
+          </geometry>
+        </visual>
+      </link>
+      <script>
+        <loop>true</loop>
+        <auto_start>true</auto_start>
+        <trajectory id="0" type="square">
+           <waypoint>
+              <time>0.00</time>
+              <pose>-2.62 9.50 0 0 0 0</pose>
+           </waypoint>
+           <waypoint>
+              <time>3.99</time>
+              <pose>-0.11 5.00 0 0 0 0</pose>
+           </waypoint>
+        </trajectory>
+      </script>
+    </actor>
+    <actor name="R2L_1.4_8">
+      <link name="box_link">
+        <visual name="visual">
+          <geometry>
+            <cylinder>
+              <radius>0.075000</radius>
+              <length>0.8</length>
+            </cylinder>
+          </geometry>
+        </visual>
+      </link>
+      <script>
+        <loop>true</loop>
+        <auto_start>true</auto_start>
+        <trajectory id="0" type="square">
+           <waypoint>
+              <time>0.00</time>
+              <pose>-4.50 6.34 0 0 0 0</pose>
+           </waypoint>
+           <waypoint>
+              <time>3.33</time>
+              <pose>0.00 8.06 0 0 0 0</pose>
+           </waypoint>
+        </trajectory>
+      </script>
+    </actor>
+    <actor name="T2B_1.7_9">
+      <link name="box_link">
+        <visual name="visual">
+          <geometry>
+            <cylinder>
+              <radius>0.075000</radius>
+              <length>0.8</length>
+            </cylinder>
+          </geometry>
+        </visual>
+      </link>
+      <script>
+        <loop>true</loop>
+        <auto_start>true</auto_start>
+        <trajectory id="0" type="square">
+           <waypoint>
+              <time>0.00</time>
+              <pose>-3.81 9.50 0 0 0 0</pose>
+           </waypoint>
+           <waypoint>
+              <time>2.84</time>
+              <pose>-2.07 5.00 0 0 0 0</pose>
            </waypoint>
         </trajectory>
       </script>

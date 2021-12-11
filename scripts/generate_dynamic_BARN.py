@@ -1,4 +1,4 @@
-BASE_WORLD_PATH = "world.world"
+BASE_WORLD_PATH = "scripts/base_world.world"
 
 def moving_cylinder(name, t1, x1, y1, t2, x2, y2):
     return "\
@@ -73,10 +73,13 @@ if __name__ == "__main__":
     import numpy as np
     import os
 
-    
     parser = argparse.ArgumentParser()
     parser.add_argument('--save_dir', type=str, default="jackal_helper/worlds/BARN")
     parser.add_argument('--seed', type=int, default=11)
+    parser.add_argument('--min_speed', type=float, default=0.3)
+    parser.add_argument('--max_speed', type=float, default=1.9)
+    parser.add_argument('--min_object', type=int, default=3)
+    parser.add_argument('--max_object', type=int, default=9)
     parser.add_argument('--start_idx', type=int, default=300)
     parser.add_argument('--n_worlds', type=int, default=100)
     args = parser.parse_args()
@@ -92,8 +95,8 @@ if __name__ == "__main__":
         
     for i in range(args.n_worlds):
         mid = ""
-        for j in range(np.random.randint(MIN_NUM_MOVING_OBJECT, MAX_NUM_MOVING_OBJECT)):
-            waypoints = sample_waypoints(np.random.choice(DIRECTIONS), np.random.choice(SPEEDS), j)
+        for j in range(np.random.randint(args.min_object, args.max_object)):
+            waypoints = sample_waypoints(np.random.choice(DIRECTIONS), np.random.uniform(args.min_speed, args.max_speed), j)
             mid += moving_cylinder(*waypoints)
             
         with open(os.path.join(args.save_dir, "world_%d.world" %(i + args.start_idx)), "w") as f:
