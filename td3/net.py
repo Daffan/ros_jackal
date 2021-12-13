@@ -25,7 +25,7 @@ class Encoder(nn.Module):
         the output should be of size [batch, hidden_size]
         """
         super().__init__()
-        self.feature_dim = hidden_size
+        self.hidden_size = self.feature_dim = hidden_size
     
     def forward(self, states, actions=None):
         return None
