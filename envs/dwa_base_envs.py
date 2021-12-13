@@ -24,6 +24,7 @@ class DWABase(gym.Env):
         goal_position=[4, 0, 0],
         max_step=100,
         time_step=1,
+        local_progress_obs=False,
         slack_reward=-1,
         failure_reward=-50,
         success_reward=0,
@@ -43,6 +44,7 @@ class DWABase(gym.Env):
         self.goal_position = goal_position
         self.verbose = verbose
         self.time_step = time_step
+        self.local_progress_obs = local_progress_obs
         self.max_step = max_step
         self.slack_reward = slack_reward
         self.failure_reward = failure_reward
@@ -262,10 +264,11 @@ class DWABaseLaser(DWABase):
         self.laser_clip = laser_clip
         
         # 720 laser scan + local goal (in angle)
+        obs_dim = 721 if not self.local_progress_obs else 723
         self.observation_space = Box(
             low=0,
             high=laser_clip,
-            shape=(721,),
+            shape=(obs_dim,),
             dtype=np.float32
         )
 
@@ -286,8 +289,14 @@ class DWABaseLaser(DWABase):
         
         laser_scan = (laser_scan - self.laser_clip/2.) / self.laser_clip # scale to (-0.5, 0.5)
         local_goal = local_goal / (2.0 * np.pi) # scale to (-0.5, 0.5)
+        
+        obs = [laser_scan, local_goal]
+        if self.local_progress_obs:
+            pos = self.gazebo_sim.get_model_state().pose.position
+            local_progress = (np.array([pos.x, pos.y]) - 2.5) / 5  # roughly [-0.5, 0.5]
+            obs += local_progress
 
-        obs = np.concatenate([laser_scan, local_goal])
+        obs = np.concatenate(obs)
 
         return obs
 
