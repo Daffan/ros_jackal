@@ -27,6 +27,11 @@ if not os.getenv('BUFFER_PATH'):
 else:
     buffer_path = os.environ['BUFFER_PATH']
 
+# add path to the plugins to the GAZEBO_PLUGIN_PATH
+gpp = os.getenv('GAZEBO_PLUGIN_PATH')
+wd = os.getcwd()
+os.environ['GAZEBO_PLUGIN_PATH'] = os.path.join(wd, "jackal_helper/plugins/build") + ":" + gpp
+
 if not os.path.exists(buffer_path):
     os.mkdir(buffer_path)
 

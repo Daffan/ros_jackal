@@ -138,292 +138,189 @@
         <gravity>1</gravity>
       </link>
     </model>
-    <actor name="L2R_1.3_0">
-      <link name="box_link">
-        <visual name="visual">
+
+    <model name='libR2L_38_7'>
+      <static>1</static>
+      <pose frame=''>-0.225000 0.075000 0.000000 0.000000 0.000000 0.000000</pose>
+      <link name='link'>
+        <inertial>
+          <mass>1</mass>
+          <inertia>
+            <ixx>0.145833</ixx>
+            <ixy>0</ixy>
+            <ixz>0</ixz>
+            <iyy>0.145833</iyy>
+            <iyz>0</iyz>
+            <izz>0.125</izz>
+          </inertia>
+        </inertial>
+        <collision name='collision'>
           <geometry>
             <cylinder>
               <radius>0.075000</radius>
               <length>0.8</length>
             </cylinder>
           </geometry>
-        </visual>
-      </link>
-      <script>
-        <loop>true</loop>
-        <auto_start>true</auto_start>
-        <trajectory id="0" type="square">
-           <waypoint>
-              <time>0.00</time>
-              <pose>0.00 6.93 0 0 0 0</pose>
-           </waypoint>
-           <waypoint>
-              <time>3.52</time>
-              <pose>-4.50 6.75 0 0 0 0</pose>
-           </waypoint>
-        </trajectory>
-      </script>
-    </actor>
-    <actor name="L2R_1.0_1">
-      <link name="box_link">
-        <visual name="visual">
+          <max_contacts>10</max_contacts>
+          <surface>
+            <contact>
+              <ode/>
+            </contact>
+            <bounce/>
+            <friction>
+              <torsional>
+                <ode/>
+              </torsional>
+              <ode/>
+            </friction>
+          </surface>
+        </collision>
+        <visual name='visual'>
           <geometry>
             <cylinder>
               <radius>0.075000</radius>
               <length>0.8</length>
             </cylinder>
           </geometry>
+	    <material>
+              <ambient>0.152000 0.379000 0.720000 1</ambient>
+	      <diffuse>0.152000 0.379000 0.720000 1</diffuse>
+          </material>
+          <material>
+            <script>
+              <name>Gazebo/Grey</name>
+              <uri>file://media/materials/scripts/gazebo.material</uri>
+            </script>
+          </material>
         </visual>
+        <self_collide>0</self_collide>
+        <kinematic>0</kinematic>
+        <gravity>1</gravity>
       </link>
-      <script>
-        <loop>true</loop>
-        <auto_start>true</auto_start>
-        <trajectory id="0" type="square">
-           <waypoint>
-              <time>0.00</time>
-              <pose>0.00 5.76 0 0 0 0</pose>
-           </waypoint>
-           <waypoint>
-              <time>4.73</time>
-              <pose>-4.50 6.65 0 0 0 0</pose>
-           </waypoint>
-        </trajectory>
-      </script>
-    </actor>
-    <actor name="B2T_1.5_2">
-      <link name="box_link">
-        <visual name="visual">
+      <plugin name='libR2L_38_7' filename='libR2L_38_7.so'/>
+    </model>
+
+    <model name='libL2R_69_17'>
+      <static>1</static>
+      <pose frame=''>-0.225000 0.075000 0.000000 0.000000 0.000000 0.000000</pose>
+      <link name='link'>
+        <inertial>
+          <mass>1</mass>
+          <inertia>
+            <ixx>0.145833</ixx>
+            <ixy>0</ixy>
+            <ixz>0</ixz>
+            <iyy>0.145833</iyy>
+            <iyz>0</iyz>
+            <izz>0.125</izz>
+          </inertia>
+        </inertial>
+        <collision name='collision'>
           <geometry>
             <cylinder>
               <radius>0.075000</radius>
               <length>0.8</length>
             </cylinder>
           </geometry>
-        </visual>
-      </link>
-      <script>
-        <loop>true</loop>
-        <auto_start>true</auto_start>
-        <trajectory id="0" type="square">
-           <waypoint>
-              <time>0.00</time>
-              <pose>-3.06 5.00 0 0 0 0</pose>
-           </waypoint>
-           <waypoint>
-              <time>3.16</time>
-              <pose>-4.39 9.50 0 0 0 0</pose>
-           </waypoint>
-        </trajectory>
-      </script>
-    </actor>
-    <actor name="R2L_1.3_3">
-      <link name="box_link">
-        <visual name="visual">
+          <max_contacts>10</max_contacts>
+          <surface>
+            <contact>
+              <ode/>
+            </contact>
+            <bounce/>
+            <friction>
+              <torsional>
+                <ode/>
+              </torsional>
+              <ode/>
+            </friction>
+          </surface>
+        </collision>
+        <visual name='visual'>
           <geometry>
             <cylinder>
               <radius>0.075000</radius>
               <length>0.8</length>
             </cylinder>
           </geometry>
+	    <material>
+              <ambient>0.152000 0.379000 0.720000 1</ambient>
+	      <diffuse>0.152000 0.379000 0.720000 1</diffuse>
+          </material>
+          <material>
+            <script>
+              <name>Gazebo/Grey</name>
+              <uri>file://media/materials/scripts/gazebo.material</uri>
+            </script>
+          </material>
         </visual>
+        <self_collide>0</self_collide>
+        <kinematic>0</kinematic>
+        <gravity>1</gravity>
       </link>
-      <script>
-        <loop>true</loop>
-        <auto_start>true</auto_start>
-        <trajectory id="0" type="square">
-           <waypoint>
-              <time>0.00</time>
-              <pose>-4.50 8.13 0 0 0 0</pose>
-           </waypoint>
-           <waypoint>
-              <time>3.77</time>
-              <pose>0.00 5.87 0 0 0 0</pose>
-           </waypoint>
-        </trajectory>
-      </script>
-    </actor>
-    <actor name="L2R_1.1_4">
-      <link name="box_link">
-        <visual name="visual">
+      <plugin name='libL2R_69_17' filename='libL2R_69_17.so'/>
+    </model>
+
+    <model name='libL2R_67_2'>
+      <static>1</static>
+      <pose frame=''>-0.225000 0.075000 0.000000 0.000000 0.000000 0.000000</pose>
+      <link name='link'>
+        <inertial>
+          <mass>1</mass>
+          <inertia>
+            <ixx>0.145833</ixx>
+            <ixy>0</ixy>
+            <ixz>0</ixz>
+            <iyy>0.145833</iyy>
+            <iyz>0</iyz>
+            <izz>0.125</izz>
+          </inertia>
+        </inertial>
+        <collision name='collision'>
           <geometry>
             <cylinder>
               <radius>0.075000</radius>
               <length>0.8</length>
             </cylinder>
           </geometry>
-        </visual>
-      </link>
-      <script>
-        <loop>true</loop>
-        <auto_start>true</auto_start>
-        <trajectory id="0" type="square">
-           <waypoint>
-              <time>0.00</time>
-              <pose>0.00 7.67 0 0 0 0</pose>
-           </waypoint>
-           <waypoint>
-              <time>4.60</time>
-              <pose>-4.50 5.17 0 0 0 0</pose>
-           </waypoint>
-        </trajectory>
-      </script>
-    </actor>
-    <actor name="T2B_1.2_5">
-      <link name="box_link">
-        <visual name="visual">
+          <max_contacts>10</max_contacts>
+          <surface>
+            <contact>
+              <ode/>
+            </contact>
+            <bounce/>
+            <friction>
+              <torsional>
+                <ode/>
+              </torsional>
+              <ode/>
+            </friction>
+          </surface>
+        </collision>
+        <visual name='visual'>
           <geometry>
             <cylinder>
               <radius>0.075000</radius>
               <length>0.8</length>
             </cylinder>
           </geometry>
+	    <material>
+              <ambient>0.152000 0.379000 0.720000 1</ambient>
+	      <diffuse>0.152000 0.379000 0.720000 1</diffuse>
+          </material>
+          <material>
+            <script>
+              <name>Gazebo/Grey</name>
+              <uri>file://media/materials/scripts/gazebo.material</uri>
+            </script>
+          </material>
         </visual>
+        <self_collide>0</self_collide>
+        <kinematic>0</kinematic>
+        <gravity>1</gravity>
       </link>
-      <script>
-        <loop>true</loop>
-        <auto_start>true</auto_start>
-        <trajectory id="0" type="square">
-           <waypoint>
-              <time>0.00</time>
-              <pose>-1.91 9.50 0 0 0 0</pose>
-           </waypoint>
-           <waypoint>
-              <time>3.73</time>
-              <pose>-1.54 5.00 0 0 0 0</pose>
-           </waypoint>
-        </trajectory>
-      </script>
-    </actor>
-    <actor name="T2B_0.7_6">
-      <link name="box_link">
-        <visual name="visual">
-          <geometry>
-            <cylinder>
-              <radius>0.075000</radius>
-              <length>0.8</length>
-            </cylinder>
-          </geometry>
-        </visual>
-      </link>
-      <script>
-        <loop>true</loop>
-        <auto_start>true</auto_start>
-        <trajectory id="0" type="square">
-           <waypoint>
-              <time>0.00</time>
-              <pose>-0.39 9.50 0 0 0 0</pose>
-           </waypoint>
-           <waypoint>
-              <time>6.46</time>
-              <pose>-1.24 5.00 0 0 0 0</pose>
-           </waypoint>
-        </trajectory>
-      </script>
-    </actor>
-    <actor name="B2T_1.0_7">
-      <link name="box_link">
-        <visual name="visual">
-          <geometry>
-            <cylinder>
-              <radius>0.075000</radius>
-              <length>0.8</length>
-            </cylinder>
-          </geometry>
-        </visual>
-      </link>
-      <script>
-        <loop>true</loop>
-        <auto_start>true</auto_start>
-        <trajectory id="0" type="square">
-           <waypoint>
-              <time>0.00</time>
-              <pose>-4.09 5.00 0 0 0 0</pose>
-           </waypoint>
-           <waypoint>
-              <time>4.59</time>
-              <pose>-3.15 9.50 0 0 0 0</pose>
-           </waypoint>
-        </trajectory>
-      </script>
-    </actor>
-    <actor name="R2L_0.6_8">
-      <link name="box_link">
-        <visual name="visual">
-          <geometry>
-            <cylinder>
-              <radius>0.075000</radius>
-              <length>0.8</length>
-            </cylinder>
-          </geometry>
-        </visual>
-      </link>
-      <script>
-        <loop>true</loop>
-        <auto_start>true</auto_start>
-        <trajectory id="0" type="square">
-           <waypoint>
-              <time>0.00</time>
-              <pose>-4.50 5.65 0 0 0 0</pose>
-           </waypoint>
-           <waypoint>
-              <time>8.01</time>
-              <pose>0.00 5.33 0 0 0 0</pose>
-           </waypoint>
-        </trajectory>
-      </script>
-    </actor>
-    <actor name="L2R_1.3_9">
-      <link name="box_link">
-        <visual name="visual">
-          <geometry>
-            <cylinder>
-              <radius>0.075000</radius>
-              <length>0.8</length>
-            </cylinder>
-          </geometry>
-        </visual>
-      </link>
-      <script>
-        <loop>true</loop>
-        <auto_start>true</auto_start>
-        <trajectory id="0" type="square">
-           <waypoint>
-              <time>0.00</time>
-              <pose>0.00 7.96 0 0 0 0</pose>
-           </waypoint>
-           <waypoint>
-              <time>3.71</time>
-              <pose>-4.50 6.21 0 0 0 0</pose>
-           </waypoint>
-        </trajectory>
-      </script>
-    </actor>
-    <actor name="R2L_1.5_10">
-      <link name="box_link">
-        <visual name="visual">
-          <geometry>
-            <cylinder>
-              <radius>0.075000</radius>
-              <length>0.8</length>
-            </cylinder>
-          </geometry>
-        </visual>
-      </link>
-      <script>
-        <loop>true</loop>
-        <auto_start>true</auto_start>
-        <trajectory id="0" type="square">
-           <waypoint>
-              <time>0.00</time>
-              <pose>-4.50 6.37 0 0 0 0</pose>
-           </waypoint>
-           <waypoint>
-              <time>3.21</time>
-              <pose>0.00 8.14 0 0 0 0</pose>
-           </waypoint>
-        </trajectory>
-      </script>
-    </actor>
+      <plugin name='libL2R_67_2' filename='libL2R_67_2.so'/>
+    </model>
 
     <model name='unit_cylinder_1'>
       <static>1</static>
