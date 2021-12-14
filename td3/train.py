@@ -106,7 +106,7 @@ def initialize_policy(config, env):
 
     encoder_type = training_config["encoder"]
     encoder_args = {
-        'input_dim': np.prod(state_dim),
+        'input_dim': state_dim[-1],  # np.prod(state_dim),
         'num_layers': training_config['num_layers'],
         'hidden_size': training_config['hidden_layer_size'],
         'history_length': config["env_config"]["stack_frame"],
@@ -189,6 +189,7 @@ def train(env, policy, buffer, config):
     training_args = training_config["training_args"]
     print("    >>>> Pre-collect experience")
     collector.collect(n_step=training_config['pre_collect'])
+    print("    >>>> Start training")
 
     n_steps = 0
     n_iter = 0

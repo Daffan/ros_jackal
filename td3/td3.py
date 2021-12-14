@@ -143,8 +143,9 @@ class TD3(object):
             (action_range[1] + action_range[0]) / 2.0, device=self.device)
 
     def select_action(self, state):
-        if len(state.shape) < 2:
-            state = torch.FloatTensor(state.reshape(1, -1)).to(self.device)
+        state = torch.FloatTensor(state).to(self.device)
+        if len(state.shape) < 3:
+            state = state[None, :, :]
         action = self.actor(state).cpu().data.numpy().flatten()
         action += np.random.normal(0, self.exploration_noise, size=action.shape)
         action *= self._action_scale.cpu().data.numpy()
@@ -374,7 +375,7 @@ class SMCPTD3(TD3):
         }
 
     def select_action(self, state):
-        if self.exploration_noise > 0
+        if self.exploration_noise > 0:
             s = state.repeat(self.num_particle).clone()
             r = 0
             gamma = torch.zeros(self.num_particle,)

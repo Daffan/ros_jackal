@@ -55,6 +55,7 @@ class MLPEncoder(Encoder):
         self.net = nn.Sequential(*layers)
 
     def forward(self, x):
+        x = x.reshape(x.shape[0], -1)  # mlp will flatten time sequence
         return self.net(x)
 
 
