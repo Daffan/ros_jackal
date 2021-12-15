@@ -3,7 +3,7 @@ env_config:
   env_id: "motion_control_continuous_laser-v0"
   seed: 13
   shaping_reward: True
-  stack_frame: 4
+  stack_frame: 1
   safe_rl: True # for safe RL
   kwargs:
     world_name: "world_0.world"

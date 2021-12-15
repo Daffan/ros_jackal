@@ -141,7 +141,8 @@ def initialize_policy(config, env):
         )
 
 
-    buffer = ReplayBuffer(state_dim, action_dim, training_config['buffer_size'], device=device)
+    buffer = ReplayBuffer(state_dim, action_dim, training_config['buffer_size'],
+                          device=device, safe_rl=config['env_config']["safe_rl"])
 
     return policy, buffer
 

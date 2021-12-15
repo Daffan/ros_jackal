@@ -95,7 +95,7 @@ class TD3(object):
             self.safe_rl = True
             self.safe_critic = safe_critic
             self.safe_critic_target = copy.deepcopy(self.safe_critic)
-            self.safe_critic_optim = safe_critic_optim
+            self.safe_critic_optimizer = safe_critic_optim
             self.safety_threshold = safety_threshold
 
         self.gamma = gamma
@@ -126,14 +126,14 @@ class TD3(object):
         for p, g, dim in zip(self.actor.parameters(), grad, self.grad_dims):
             en = beg + dim
             if g is not None:
-                self.grads[beg:en,i].copy_(grad.view(-1).data.clone())
+                self.grads[beg:en,i].copy_(g.view(-1).data.clone())
             beg = en
 
     def vec2grad(self, grad):
         beg = 0
         for p, dim in zip(self.actor.parameters(), self.grad_dims):
             en = beg + dim
-            p.grad = grad[beg:en].data.clone()
+            p.grad = grad[beg:en].data.clone().view(*p.shape)
             beg = en
 
     def safe_update(self, neg_safe_advantage):
@@ -215,7 +215,7 @@ class TD3(object):
         critic_loss = critic_loss.item()
         return self.grad_norm(self.actor), self.grad_norm(self.critic), actor_loss, critic_loss
 
-    def safety_train(self, replay_buffer, batch_size=256):
+    def safe_train(self, replay_buffer, batch_size=256):
         self.total_it += 1
 
         # Sample replay buffer ("task" for multi-task learning)
@@ -238,7 +238,7 @@ class TD3(object):
             target_Q = reward + not_done * gammas * target_Q
 
             # Compute the target safe Q value
-            safe_target_Q1, safe_target_safe_Q2 = self.safe_critic_target(next_state, next_action)
+            safe_target_Q1, safe_target_Q2 = self.safe_critic_target(next_state, next_action)
             safe_target_Q = torch.min(safe_target_Q1, safe_target_Q2)
             safe_target_Q = collision_reward + not_done * gammas * safe_target_Q
 
@@ -270,13 +270,13 @@ class TD3(object):
 
             # Compute actor losse
             action_now = self.actor(state)
-            actor_loss = -self.critic.Q1(state, aciton_now).mean()
+            actor_loss = -self.critic.Q1(state, action_now).mean()
             safe_actor_loss = -self.safe_critic.Q1(state, action_now).mean()
 
             # Optimize the actor
             self.actor_optimizer.zero_grad()
 
-            grad_1 = torch.autograd.grad(actor_loss, self.actor.parameters())
+            grad_1 = torch.autograd.grad(actor_loss, self.actor.parameters(), retain_graph=True)
             self.grad2vec(grad_1, 0)
             grad_2 = torch.autograd.grad(safe_actor_loss, self.actor.parameters())
             self.grad2vec(grad_1, 0)

@@ -176,9 +176,9 @@ class DWABase(gym.Env):
             rew += self.success_reward
 
         # add smoothness reward
-        smoothness = self._compute_angle(len(self.traj_pos) - 1)
-        rew += self.smoothness_reward * smoothness
-        self.smoothness += smoothness
+        #smoothness = self._compute_angle(len(self.traj_pos) - 1)
+        #rew += self.smoothness_reward * smoothness
+        #self.smoothness += smoothness
 
         # calculate penalty
         laser_scan = np.array(self.move_base.get_laser_scan().ranges)
