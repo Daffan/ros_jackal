@@ -114,13 +114,32 @@ def initialize_policy(config, env):
         lr=training_config['critic_lr']
     )
 
-    policy = TD3(
-        actor, actor_optim, 
-        critic, critic_optim, 
-        action_range=[action_space_low, action_space_high],
-        device=device,
-        **training_config["policy_args"]
-    )
+    if config['env_config']["safe_rl"]:
+        safe_critic = Critic(
+            state_preprocess,
+            head=MLP(input_dim, training_config['num_layers'], training_config['hidden_layer_size'])
+        ).to(device)
+        safe_critic_optim = torch.optim.Adam(
+            critic.parameters(), 
+            lr=training_config['critic_lr']
+        )
+        policy = TD3(
+            actor, actor_optim, 
+            critic, critic_optim, 
+            action_range=[action_space_low, action_space_high],
+            safe_critic=safe_critic, safe_critic_optim=safe_critic_optim,
+            device=device,
+            **training_config["policy_args"]
+        )
+    else:
+        policy = TD3(
+            actor, actor_optim, 
+            critic, critic_optim, 
+            action_range=[action_space_low, action_space_high],
+            device=device,
+            **training_config["policy_args"]
+        )
+
 
     buffer = ReplayBuffer(state_dim, action_dim, training_config['buffer_size'], device=device)
 
