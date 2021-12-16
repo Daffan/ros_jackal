@@ -4,7 +4,7 @@ env_config:
   seed: 13
   shaping_reward: True
   stack_frame: 1
-  safe_rl: True # for safe RL
+  safe_rl: False # for safe RL
   kwargs:
     world_name: "world_0.world"
     gui: false

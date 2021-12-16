@@ -97,6 +97,8 @@ class TD3(object):
             self.safe_critic_target = copy.deepcopy(self.safe_critic)
             self.safe_critic_optimizer = safe_critic_optim
             self.safety_threshold = safety_threshold
+        else:
+            self.safe_rl = False
 
         self.gamma = gamma
         self.tau = tau
