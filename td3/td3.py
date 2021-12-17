@@ -80,7 +80,9 @@ class TD3(object):
             n_step=4,
             update_actor_freq=2,
             exploration_noise=0.1,
-            safety_threshold=-0.1,
+            safe_threshold=-0.1,
+            safe_lagr=0.1,
+            safe_mode="lagr",
     ):
 
         self.actor = actor
@@ -93,10 +95,12 @@ class TD3(object):
 
         if safe_critic is not None:
             self.safe_rl = True
+            self.safe_lagr = safe_lagr
+            self.safe_mode = safe_mode
             self.safe_critic = safe_critic
             self.safe_critic_target = copy.deepcopy(self.safe_critic)
             self.safe_critic_optimizer = safe_critic_optim
-            self.safety_threshold = safety_threshold
+            self.safe_threshold = safe_threshold
         else:
             self.safe_rl = False
 
@@ -141,7 +145,7 @@ class TD3(object):
     def safe_update(self, neg_safe_advantage):
         g1 = self.grads[:,0]
         g2 = -self.grads[:,1]
-        phi = neg_safe_advantage.detach() - self.safety_threshold
+        phi = neg_safe_advantage.detach() - self.safe_threshold
         lmbd = F.relu((0.1 * phi - g1.dot(g2))/(g2.dot(g2)+1e-8))
         return g1 + lmbd * g2
 
@@ -276,18 +280,21 @@ class TD3(object):
             safe_actor_loss = -self.safe_critic.Q1(state, action_now).mean()
 
             # Optimize the actor
-            self.actor_optimizer.zero_grad()
 
-            grad_1 = torch.autograd.grad(actor_loss, self.actor.parameters(), retain_graph=True)
-            self.grad2vec(grad_1, 0)
-            grad_2 = torch.autograd.grad(safe_actor_loss, self.actor.parameters())
-            self.grad2vec(grad_1, 0)
-
-            grad = self.safe_update(safe_actor_loss)
-            self.vec2grad(grad)
-
-            #actor_loss.backward()
-            self.actor_optimizer.step()
+            if self.safe_mode == "lagr": # use the lagrangian method
+                self.actor_optimizer.zero_grad()
+                actor_loss = actor_loss + self.safe_lagr * safe_actor_loss
+                actor_loss.backward()
+                self.actor_optimizer.step()
+            else: # use the lyapunov method
+                self.actor_optimizer.zero_grad()
+                grad_1 = torch.autograd.grad(actor_loss, self.actor.parameters(), retain_graph=True)
+                self.grad2vec(grad_1, 0)
+                grad_2 = torch.autograd.grad(safe_actor_loss, self.actor.parameters())
+                self.grad2vec(grad_2, 1)
+                grad = self.safe_update(safe_actor_loss)
+                self.vec2grad(grad)
+                self.actor_optimizer.step()
 
             # Update the frozen target models
             for param, target_param in zip(self.critic.parameters(), self.critic_target.parameters()):

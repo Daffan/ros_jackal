@@ -4,7 +4,9 @@ env_config:
   seed: 13
   shaping_reward: True
   stack_frame: 1
-  safe_rl: False # for safe RL
+  safe_rl: True # for safe RL
+  safe_mode: "lagr" # for safe RL
+  safe_lagr: 2. # for safe RL
   kwargs:
     world_name: "world_0.world"
     gui: false
@@ -13,7 +15,7 @@ env_config:
     time_step: 0.2
     laser_clip: 2
     slack_reward: 0
-    collision_reward: -1.
+    collision_reward: -0.01
     failure_reward: 0
     success_reward: 20
     init_position: [-2, 2, 1.57]
