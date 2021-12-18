@@ -31,6 +31,10 @@ class DWABase(gym.Env):
         collision_reward=0,
         smoothness_reward=0,
         max_collision=10000,
+<<<<<<< HEAD
+=======
+        safe_rl=False,
+>>>>>>> origin/saferl
         verbose=True
     ):
         """Base RL env that initialize jackal simulation in Gazebo
@@ -52,6 +56,12 @@ class DWABase(gym.Env):
         self.collision_reward = collision_reward
         self.smoothness_reward = smoothness_reward
         self.max_collision = max_collision
+<<<<<<< HEAD
+=======
+
+        # for safety learning, separate collision penalty from reward
+        self.safe_rl = safe_rl
+>>>>>>> origin/saferl
 
         # launch gazebo and dwa demo
         rospy.logwarn(">>>>>>>>>>>>>>>>>> Load world: %s <<<<<<<<<<<<<<<<<<" %(world_name))
@@ -170,6 +180,7 @@ class DWABase(gym.Env):
 
     def _get_reward(self):
         rew = self.slack_reward
+<<<<<<< HEAD
         if self._get_success():
             rew += self.success_reward
         elif self._get_done():
@@ -183,6 +194,28 @@ class DWABase(gym.Env):
         self.smoothness += smoothness
         if self.smoothness_reward > 0:
             rew += self.smoothness_reward * smoothness
+=======
+        if self.step_count >= self.max_step:  # or self._get_flip_status():
+            rew += self.failure_reward
+        if self._get_success():
+            rew += self.success_reward
+
+        # add smoothness reward
+        #smoothness = self._compute_angle(len(self.traj_pos) - 1)
+        #rew += self.smoothness_reward * smoothness
+        #self.smoothness += smoothness
+
+        # calculate penalty
+        laser_scan = np.array(self.move_base.get_laser_scan().ranges)
+        d = np.mean(sorted(laser_scan)[:10])
+        if d < 0.3:  # minimum distance 0.3 meter 
+            self.c_rew = self.collision_reward / (d + 0.05)
+        else:
+            self.c_rew = 0.
+
+        if not self.safe_rl:
+            rew += self.c_rew
+>>>>>>> origin/saferl
         return rew
 
     def _compute_angle(self, idx):
@@ -209,13 +242,15 @@ class DWABase(gym.Env):
 
     def _get_info(self):
         bn, nn = self.move_base.get_bad_vel_num()
-        self.collision_count += self.move_base.get_collision()
+        collided = self.move_base.get_collision()
+        self.collision_count += collided
         return dict(
             world=self.world_name,
             time=rospy.get_time() - self.start_time,
             collision=self.collision_count,
             recovery=1.0 * bn / nn,
-            smoothness=self.smoothness
+            smoothness=self.smoothness,
+            collision_reward=self.c_rew,
         )
 
     def _get_local_goal(self):

@@ -49,9 +49,16 @@ class CondorCollector(object):
             state_next = traj[i+1][0] if i < len(traj)-1 else traj[i][0]
             world = int(info['world'].split(
                 "_")[-1].split(".")[0])  # task index
-            self.buffer.add(state, action,
-                            state_next, reward,
-                            done, world)
+            collision_reward = info['collision_reward']
+
+            if self.policy.safe_rl:
+                self.buffer.add(state, action,
+                                state_next, reward,
+                                done, world, collision_reward)
+            else:
+                self.buffer.add(state, action,
+                                state_next, reward,
+                                done, world)
 
     def natural_keys(self, text):
         return int(re.split(r'(\d+)', text)[1])
@@ -94,7 +101,7 @@ class CondorCollector(object):
                     try:
                         target = join(base, p)
                         if os.path.getsize(target) > 0:
-                            if steps < n_step:  # if reach the target steps, don't put the experinece into the buffer
+                            if steps < n_step:  # if reach the target steps, don't put the experience into the buffer
                                 with open(target, 'rb') as f:
                                     traj = pickle.load(f)
                                     ep_rew = sum([t[2] for t in traj])

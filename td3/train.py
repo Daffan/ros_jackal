@@ -41,11 +41,21 @@ def initialize_logging(config):
     # Config logging
     now = datetime.now()
     dt_string = now.strftime("%Y_%m_%d_%H_%M")
+    if config["env_config"]["safe_rl"]:
+        mode = config["env_config"]["safe_mode"]
+        string = f"safe_rl_{mode}_"
+        if mode == "lagr":
+            string = string + "lagr"+str(config["env_config"]["safe_lagr"]) + "_"
+    else:
+        string = ""
+
+    string = string + dt_string
+
     save_path = join(
         env_config["save_path"], 
         env_config["env_id"], 
         training_config['algorithm'], 
-        dt_string
+        string
     )
     print("    >>>> Saving to %s" % save_path)
     if not exists(save_path):
@@ -181,6 +191,25 @@ def initialize_policy(config, env):
             device=device,
             **training_config["policy_args"]
         )
+    elif config['env_config']["safe_rl"]:
+        safe_critic = Critic(
+            state_preprocess=get_encoder(encoder_type, encoder_args),
+            head=MLP(input_dim, training_config['num_layers'], training_config['hidden_layer_size'])
+        ).to(device)
+        safe_critic_optim = torch.optim.Adam(
+            critic.parameters(), 
+            lr=training_config['critic_lr']
+        )
+        policy = TD3(
+            actor, actor_optim, 
+            critic, critic_optim, 
+            action_range=[action_space_low, action_space_high],
+            safe_critic=safe_critic, safe_critic_optim=safe_critic_optim,
+            device=device,
+            safe_lagr=config['env_config']['safe_lagr'],
+            safe_mode=config['env_config']['safe_mode'],
+            **training_config["policy_args"]
+        )
     else:
         policy = TD3(
             actor, actor_optim, 
@@ -190,10 +219,8 @@ def initialize_policy(config, env):
             **training_config["policy_args"]
         )
 
-    if "pre_train" in training_config.keys() and training_config["pre_train"]:
-        policy.load(training_config["pre_train"], "policy")
-
-    buffer = ReplayBuffer(state_dim, action_dim, training_config['buffer_size'], device=device)
+    buffer = ReplayBuffer(state_dim, action_dim, training_config['buffer_size'],
+                          device=device, safe_rl=config['env_config']["safe_rl"])
 
     return policy, buffer
 

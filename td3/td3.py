@@ -117,6 +117,8 @@ class TD3(object):
             critic,
             critic_optim,
             action_range,
+            safe_critic=None,
+            safe_critic_optim=None,
             device="cpu",
             gamma=0.99,
             tau=0.005,
@@ -124,7 +126,10 @@ class TD3(object):
             noise_clip=0.5,
             n_step=4,
             update_actor_freq=2,
-            exploration_noise=0.1
+            exploration_noise=0.1,
+            safe_threshold=-0.1,
+            safe_lagr=0.1,
+            safe_mode="lagr",
     ):
 
         self.actor = actor
@@ -134,6 +139,17 @@ class TD3(object):
         self.critic = critic
         self.critic_target = copy.deepcopy(self.critic)
         self.critic_optimizer = critic_optim
+
+        if safe_critic is not None:
+            self.safe_rl = True
+            self.safe_lagr = safe_lagr
+            self.safe_mode = safe_mode
+            self.safe_critic = safe_critic
+            self.safe_critic_target = copy.deepcopy(self.safe_critic)
+            self.safe_critic_optimizer = safe_critic_optim
+            self.safe_threshold = safe_threshold
+        else:
+            self.safe_rl = False
 
         self.gamma = gamma
         self.tau = tau
@@ -150,6 +166,35 @@ class TD3(object):
             (action_range[1] - action_range[0]) / 2.0, device=self.device)
         self._action_bias = torch.tensor(
             (action_range[1] + action_range[0]) / 2.0, device=self.device)
+
+        if self.safe_rl:
+            self.grad_dims = [p.numel() for p in self.actor.parameters()]
+            n_params = sum(self.grad_dims)
+            self.grads = torch.zeros((n_params, 2)).to(self.device)
+
+    def grad2vec(self, grad, i):
+        assert self.safe_rl, "[error] Not in Safe RL setting!"
+        self.grads[:,i].fill_(0.0)
+        beg = 0
+        for p, g, dim in zip(self.actor.parameters(), grad, self.grad_dims):
+            en = beg + dim
+            if g is not None:
+                self.grads[beg:en,i].copy_(g.view(-1).data.clone())
+            beg = en
+
+    def vec2grad(self, grad):
+        beg = 0
+        for p, dim in zip(self.actor.parameters(), self.grad_dims):
+            en = beg + dim
+            p.grad = grad[beg:en].data.clone().view(*p.shape)
+            beg = en
+
+    def safe_update(self, neg_safe_advantage):
+        g1 = self.grads[:,0]
+        g2 = -self.grads[:,1]
+        phi = neg_safe_advantage.detach() - self.safe_threshold
+        lmbd = F.relu((0.1 * phi - g1.dot(g2))/(g2.dot(g2)+1e-8))
+        return g1 + lmbd * g2
 
     def select_action(self, state):
         state = torch.FloatTensor(state).to(self.device)
@@ -233,6 +278,94 @@ class TD3(object):
         loss_info = self.train_rl(state, action, next_state, reward, not_done, gammas)
         return loss_info
 
+
+    def safe_train(self, replay_buffer, batch_size=256):
+        self.total_it += 1
+
+        # Sample replay buffer ("task" for multi-task learning)
+        state, action, next_state, reward, not_done, task, collision_reward, ind = replay_buffer.sample(
+            batch_size)
+
+        next_state, reward, not_done, gammas, collision_reward = replay_buffer.n_step_return(self.n_step, ind, self.gamma)
+
+        with torch.no_grad():
+            # Select action according to policy and add clipped noise
+            noise = (
+                torch.randn_like(action) * self.policy_noise
+            ).clamp(-self.noise_clip, self.noise_clip)
+
+            next_action = (self.actor_target(next_state) + noise).clamp(-1, 1)
+
+            # Compute the target Q value
+            target_Q1, target_Q2 = self.critic_target(next_state, next_action)
+            target_Q = torch.min(target_Q1, target_Q2)
+            target_Q = reward + not_done * gammas * target_Q
+
+            # Compute the target safe Q value
+            safe_target_Q1, safe_target_Q2 = self.safe_critic_target(next_state, next_action)
+            safe_target_Q = torch.min(safe_target_Q1, safe_target_Q2)
+            safe_target_Q = collision_reward + not_done * gammas * safe_target_Q
+
+        # Get current Q estimates
+        action -= self._action_bias
+        action /= self._action_scale  # to range of -1, 1
+        current_Q1, current_Q2 = self.critic(state, action)
+        safe_current_Q1, safe_current_Q2 = self.safe_critic(state, action)
+
+        # Compute critic loss
+        critic_loss = F.mse_loss(current_Q1, target_Q) + \
+            F.mse_loss(current_Q2, target_Q)
+        safe_critic_loss = F.mse_loss(safe_current_Q1, safe_target_Q) + \
+            F.mse_loss(safe_current_Q2, safe_target_Q)
+
+        # Optimize the critic
+        self.critic_optimizer.zero_grad()
+        critic_loss.backward()
+        self.critic_optimizer.step()
+
+        self.safe_critic_optimizer.zero_grad()
+        safe_critic_loss.backward()
+        self.safe_critic_optimizer.step()
+
+        actor_loss = None
+
+        # Delayed policy updates
+        if self.total_it % self.update_actor_freq == 0:
+
+            # Compute actor losse
+            action_now = self.actor(state)
+            actor_loss = -self.critic.Q1(state, action_now).mean()
+            safe_actor_loss = -self.safe_critic.Q1(state, action_now).mean()
+
+            # Optimize the actor
+
+            if self.safe_mode == "lagr": # use the lagrangian method
+                self.actor_optimizer.zero_grad()
+                actor_loss = actor_loss + self.safe_lagr * safe_actor_loss
+                actor_loss.backward()
+                self.actor_optimizer.step()
+            else: # use the lyapunov method
+                self.actor_optimizer.zero_grad()
+                grad_1 = torch.autograd.grad(actor_loss, self.actor.parameters(), retain_graph=True)
+                self.grad2vec(grad_1, 0)
+                grad_2 = torch.autograd.grad(safe_actor_loss, self.actor.parameters())
+                self.grad2vec(grad_2, 1)
+                grad = self.safe_update(safe_actor_loss)
+                self.vec2grad(grad)
+                self.actor_optimizer.step()
+
+            # Update the frozen target models
+            for param, target_param in zip(self.critic.parameters(), self.critic_target.parameters()):
+                target_param.data.copy_(
+                    self.tau * param.data + (1 - self.tau) * target_param.data)
+
+            for param, target_param in zip(self.actor.parameters(), self.actor_target.parameters()):
+                target_param.data.copy_(
+                    self.tau * param.data + (1 - self.tau) * target_param.data)
+
+        actor_loss = actor_loss.item() if actor_loss is not None else None
+        critic_loss = critic_loss.item()
+        return self.grad_norm(self.actor), self.grad_norm(self.critic), actor_loss, critic_loss
 
     def grad_norm(self, model):
         total_norm = 0
@@ -431,16 +564,19 @@ class SMCPTD3(TD3):
 
 
 class ReplayBuffer(object):
-    def __init__(self, state_dim, action_dim, max_size=int(1e6), device="cpu"):
+    def __init__(self, state_dim, action_dim, max_size=int(1e6), device="cpu", safe_rl=False):
         self.max_size = max_size
         self.ptr = 0
         self.size = 0
         self.mean, self.std = 0.0, 1.0
 
+        self.safe_rl = safe_rl
+
         self.state = np.zeros((max_size, *state_dim))
         self.action = np.zeros((max_size, action_dim))
         self.next_state = np.zeros((max_size, *state_dim))
         self.reward = np.zeros((max_size, 1))
+        self.collision_reward = np.zeros((max_size, 1))
         self.not_done = np.zeros((max_size, 1))
         self.task = np.zeros((max_size, 1))
 
@@ -450,13 +586,17 @@ class ReplayBuffer(object):
 
         self.device = device
 
-    def add(self, state, action, next_state, reward, done, task):
+    def add(self, state, action, next_state, reward, done, task, collision_reward=None):
         self.state[self.ptr] = state
         self.action[self.ptr] = action
         self.next_state[self.ptr] = next_state
         self.reward[self.ptr] = reward # (reward - 0.02478) / 6.499
         self.not_done[self.ptr] = 1. - done
         self.task[self.ptr] = task
+
+        if self.safe_rl:
+            assert collision_reward is not None, "collision reward should not be None"
+            self.collision_reward[self.ptr] = collision_reward
 
         self.ptr = (self.ptr + 1) % self.max_size
         self.size = min(self.size + 1, self.max_size)
@@ -470,28 +610,45 @@ class ReplayBuffer(object):
     def sample(self, batch_size):
         ind = np.random.randint(0, self.size, size=batch_size)
 
-        return (
-            torch.FloatTensor(self.state[ind]).to(self.device),
-            torch.FloatTensor(self.action[ind]).to(self.device),
-            torch.FloatTensor(self.next_state[ind]).to(self.device),
-            torch.FloatTensor(self.reward[ind]).to(self.device),
-            torch.FloatTensor(self.not_done[ind]).to(self.device),
-            torch.FloatTensor(self.task[ind]).to(self.device),
-            ind)
+        if self.safe_rl:
+            return (
+                torch.FloatTensor(self.state[ind]).to(self.device),
+                torch.FloatTensor(self.action[ind]).to(self.device),
+                torch.FloatTensor(self.next_state[ind]).to(self.device),
+                torch.FloatTensor(self.reward[ind]).to(self.device),
+                torch.FloatTensor(self.not_done[ind]).to(self.device),
+                torch.FloatTensor(self.task[ind]).to(self.device),
+                torch.FloatTensor(self.collision_reward[ind]).to(self.device),
+                ind)
+        else:
+            return (
+                torch.FloatTensor(self.state[ind]).to(self.device),
+                torch.FloatTensor(self.action[ind]).to(self.device),
+                torch.FloatTensor(self.next_state[ind]).to(self.device),
+                torch.FloatTensor(self.reward[ind]).to(self.device),
+                torch.FloatTensor(self.not_done[ind]).to(self.device),
+                torch.FloatTensor(self.task[ind]).to(self.device),
+                ind)
 
     def n_step_return(self, n_step, ind, gamma):
         reward = []
         not_done = []
         next_state = []
         gammas = []
+        if self.safe_rl:
+            collision_reward = []
+
         for i in ind:
             n = 0
             r = 0
+            c = 0
             for _ in range(n_step):
                 idx = (i + n) % self.size
                 assert self.mean is not None
                 assert self.std is not None
                 r += (self.reward[idx] - self.mean) / self.std * gamma ** n
+                if self.safe_rl:
+                    c += self.collision_reward[idx] * gamma ** n
                 if not self.not_done[idx]:
                     break
                 n = n + 1
@@ -499,8 +656,17 @@ class ReplayBuffer(object):
             not_done.append(self.not_done[idx])
             reward.append(r)
             gammas.append([gamma ** (n + 1)])
+            if self.safe_rl:
+                collision_reward.append(c)
+
         next_state = torch.FloatTensor(np.array(next_state)).to(self.device)
         not_done = torch.FloatTensor(np.array(not_done)).to(self.device)
         reward = torch.FloatTensor(np.array(reward)).to(self.device)
         gammas = torch.FloatTensor(np.array(gammas)).to(self.device)
-        return next_state, reward, not_done, gammas
+        if self.safe_rl:
+            collision_reward = torch.FloatTensor(
+                    np.array(collision_reward)).to(self.device)
+        if self.safe_rl:
+            return next_state, reward, not_done, gammas, collision_reward
+        else:
+            return next_state, reward, not_done, gammas

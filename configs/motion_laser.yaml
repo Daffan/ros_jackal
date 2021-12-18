@@ -4,6 +4,9 @@ env_config:
   seed: 13
   shaping_reward: True
   stack_frame: 1
+  safe_rl: True # for safe RL
+  safe_mode: "lagr" # for safe RL
+  safe_lagr: 2. # for safe RL
   kwargs:
     world_name: "world_0.world"
     gui: false
