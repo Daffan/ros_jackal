@@ -1,4 +1,4 @@
-# Install script for directory: /home/zifan/jackal_ws/src/ros_jackal/jackal_helper/plugins
+# Install script for directory: /jackal_ws/src/ros_jackal/jackal_helper/plugins
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
@@ -45,5 +45,5 @@ endif()
 
 string(REPLACE ";" "\n" CMAKE_INSTALL_MANIFEST_CONTENT
        "${CMAKE_INSTALL_MANIFEST_FILES}")
-file(WRITE "/home/zifan/jackal_ws/src/ros_jackal/jackal_helper/plugins/build/${CMAKE_INSTALL_MANIFEST}"
+file(WRITE "/jackal_ws/src/ros_jackal/jackal_helper/plugins/build/${CMAKE_INSTALL_MANIFEST}"
      "${CMAKE_INSTALL_MANIFEST_CONTENT}")

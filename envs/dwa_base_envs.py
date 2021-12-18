@@ -111,10 +111,10 @@ class DWABase(gym.Env):
         self.gazebo_sim.reset()
         self._reset_move_base()
         self.start_time = rospy.get_time()
+        self.traj_pos = []
         obs = self._get_observation()
         self.gazebo_sim.pause()
         self.collision_count = 0
-        self.traj_pos = []
         self.smoothness = 0
         return obs
 
@@ -138,14 +138,16 @@ class DWABase(gym.Env):
         """
         self._take_action(action)
         self.step_count += 1
+        
+        pos = self.gazebo_sim.get_model_state().pose.position
+        self.traj_pos.append((pos))
+        
         self.gazebo_sim.unpause()
         obs = self._get_observation()
         rew = self._get_reward()
         done = self._get_done()
         info = self._get_info()
         self.gazebo_sim.pause()
-        pos = self.gazebo_sim.get_model_state().pose.position
-        self.traj_pos.append((pos.x, pos.y))
         return obs, rew, done, info
 
     def _take_action(self, action):
@@ -160,7 +162,7 @@ class DWABase(gym.Env):
                                    self.move_base.robot_config.Y]) # robot position in odom frame
         goal_position = np.array(self.goal_position[:2])
         if self.world_name.startswith("BARN"):
-            robot_position = self.gazebo_sim.get_model_state().pose.position
+            robot_position = self.traj_pos[-1]
             return robot_position.y > 11  # the special condition for BARN    
         else:
             self.goal_distance = np.sqrt(np.sum((robot_position - goal_position) ** 2))
@@ -168,10 +170,11 @@ class DWABase(gym.Env):
 
     def _get_reward(self):
         rew = self.slack_reward
-        if self.step_count >= self.max_step:  # or self._get_flip_status():
-            rew += self.failure_reward
         if self._get_success():
             rew += self.success_reward
+        elif self._get_done():
+            # done but not succeed
+            rew += self.failure_reward
         laser_scan = np.array(self.move_base.get_laser_scan().ranges)
         d = np.mean(sorted(laser_scan)[:10])
         if d < 0.3:  # minimum distance 0.3 meter 
@@ -187,9 +190,9 @@ class DWABase(gym.Env):
             return np.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
         assert self.traj_pos is not None
         if len(self.traj_pos) > 2:
-            x1, y1 = self.traj_pos[idx - 2]
-            x2, y2 = self.traj_pos[idx - 1]
-            x3, y3 = self.traj_pos[idx]
+            x1, y1 = self.traj_pos[idx - 2].x, self.traj_pos[idx - 2].y
+            x2, y2 = self.traj_pos[idx - 1].x, self.traj_pos[idx - 1].y
+            x3, y3 = self.traj_pos[idx].x, self.traj_pos[idx].y
             a = - np.arccos(((x2 - x1) * (x3 - x2) + (y2 - y1) * (y3 - y2)) / dis(x1, y1, x2, y2) / dis(x2, y2, x3, y3))
         else:
             a = 0
@@ -201,7 +204,7 @@ class DWABase(gym.Env):
         return done
 
     def _get_flip_status(self):
-        robot_position = self.gazebo_sim.get_model_state().pose.position
+        robot_position = self.traj_pos[-1]
         return robot_position.z > 0.1
 
     def _get_info(self):
@@ -287,14 +290,18 @@ class DWABaseLaser(DWABase):
         laser_scan = self._get_laser_scan()
         local_goal = self._get_local_goal()
         
-        laser_scan = (laser_scan - self.laser_clip/2.) / self.laser_clip # scale to (-0.5, 0.5)
-        local_goal = local_goal / (2.0 * np.pi) # scale to (-0.5, 0.5)
+        laser_scan = (laser_scan - self.laser_clip/2.) / self.laser_clip * 2 # scale to (-1, 1)
+        local_goal = local_goal / (np.pi) # scale to (-1, 1)
         
         obs = [laser_scan, local_goal]
         if self.local_progress_obs:
-            pos = self.gazebo_sim.get_model_state().pose.position
-            local_progress = (np.array([pos.x, pos.y]) - 2.5) / 5  # roughly [-0.5, 0.5]
-            obs += local_progress
+            if len(self.traj_pos) > 1:
+                pos = self.traj_pos[-1]
+                last_pos = self.traj_pos[-2]
+                local_progress = (np.array([pos.x, pos.y]) - np.array([last_pos.x, last_pos.y])) / 2.
+            else:
+                local_progress = np.array([0, 0])
+            obs += [local_progress]
 
         obs = np.concatenate(obs)
 

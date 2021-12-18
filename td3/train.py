@@ -21,7 +21,7 @@ from envs import registration
 from envs.wrappers import ShapingRewardWrapper, StackFrame
 from information_envs import InfoEnv
 from net import *
-from td3 import Actor, Critic, TD3, ReplayBuffer, DynaTD3, Model
+from td3 import Actor, Critic, TD3, ReplayBuffer, DynaTD3, Model, SMCPTD3
 from collector import CondorCollector, LocalCollector
 
 def initialize_config(config_path, save_path):
@@ -144,7 +144,8 @@ def initialize_policy(config, env):
         model = Model(
             state_preprocess=get_encoder(encoder_type, encoder_args),
             head=MLP(input_dim, 2, training_config['hidden_layer_size']),
-            state_dim=np.prod(state_dim)
+            state_dim=state_dim,
+            deterministic=training_config['deterministic']
         ).to(device)
         model_optim = torch.optim.Adam(
             model.parameters(), 
@@ -153,6 +154,27 @@ def initialize_policy(config, env):
         policy = DynaTD3(
             model, model_optim,
             training_config["n_simulated_update"],
+            actor, actor_optim,
+            critic, critic_optim,
+            action_range=[action_space_low, action_space_high],
+            device=device,
+            **training_config["policy_args"]
+        )
+    elif training_config["MPC"]:
+        model = Model(
+            state_preprocess=get_encoder(encoder_type, encoder_args),
+            head=MLP(input_dim, 2, training_config['hidden_layer_size']),
+            state_dim=state_dim,
+            deterministic=training_config['deterministic']
+        ).to(device)
+        model_optim = torch.optim.Adam(
+            model.parameters(), 
+            lr=training_config['model_lr']
+        )
+        policy = SMCPTD3(
+            model, model_optim,
+            training_config["horizon"],
+            training_config["num_particle"],
             actor, actor_optim,
             critic, critic_optim,
             action_range=[action_space_low, action_space_high],

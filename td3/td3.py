@@ -69,11 +69,15 @@ class Model(nn.Module):
         self.state_preprocess = state_preprocess
         self.head = head
         self.deterministic = deterministic
-        if not determinstic:
-            state_dim *= 2  # mean and logvar
-        self.state_dim = state_dim
-
-        self.state_fc = nn.Linear(head.feature_dim, state_dim)
+        self.history_length, self.state_dim = state_dim
+        if not deterministic:
+            self.state_dim *= 2  # mean and logvar
+        
+        self.state_fc = nn.Sequential(*[
+            nn.Linear(head.feature_dim, self.state_dim),
+            nn.Tanh()
+        ])
+        
         # self.reward_fc = nn.Linear(head.feature_dim, 1)
         # self.done_fc = nn.Linear(head.feature_dim, 1)
 
@@ -91,14 +95,19 @@ class Model(nn.Module):
     def sample(self, state, action):
         s = self.forward(state, action)
         if self.deterministic:
-            return s
+            if self.history_length > 1:
+                return torch.cat([state[:, 1:, :], s[:, None, :]], axis=1)
+            else:
+                return s[:, None, :]
         else:
             out = self.model(state, action)
             mean = out[..., self.model.state_dim // 2:]
             logvar = out[..., :self.model.state_dim // 2]
             recon_dist = Normal(mean, torch.exp(logvar))
-            return recon_dist.sample()
-
+            if self.history_length > 1:
+                return torch.cat([state[:, 1:, :], recon_dist.sample()[:, None, :]], axis=1)
+            else:
+                return recon_dist.sample()[:, None, :]
 
 class TD3(object):
     def __init__(
@@ -264,7 +273,7 @@ class DynaTD3(TD3):
         done = 1 - not_done
         if self.model.deterministic:
             pred_next_state = self.model(state, action)
-            state_loss = self.loss_function(pred_next_state, next_state)
+            state_loss = self.loss_function(pred_next_state, next_state[:, -1, :])
         else:
             out = self.model(state, action)
             mean = out[..., self.model.state_dim // 2:]
@@ -288,32 +297,35 @@ class DynaTD3(TD3):
     def simulate_transition(self, replay_buffer, batch_size=256):
         state, action, next_state, reward, *_ = replay_buffer.sample(batch_size)
         total_reward = torch.zeros(reward.shape).to(self.device)
+        not_done = torch.ones(reward.shape).to(self.device)
+        gammas = 1
         with torch.no_grad():
             for i in range(self.n_step):
                 next_action = self.actor_target(state)
                 next_action += torch.randn_like(next_action, dtype=torch.float32) * self.exploration_noise  # exploration noise
                 if i == 0:
                     action = next_action
-                next_state = self.model(state, next_action)
+                next_state = self.model.sample(state, next_action)
                 reward = self._get_reward(state, next_state)
-                done = self._get_done(next_state)
+                not_done *= (1 - self._get_done(next_state))
+                gammas *= self.gamma ** (not_done)
                 reward = (reward - replay_buffer.mean) / replay_buffer.std  # reward normalization 
-                total_reward = reward + total_reward * self.gamma
+                total_reward = reward + total_reward * gammas
 
-        return state, action, next_state, reward, 1 - done, self.gamma ** (i + 1)
+        return state, action, next_state, reward, not_done, gammas
     
     def _get_reward(self, state, next_state):
         # This is a hard-coded reward function!!
         rew = 0
-        rew += (next_state[:, -1] - state[:, -1]) * 5 + 2.5
-        d = np.sort(next_state[:720], axis=-1)[:,:10].mean(axis=-1)
+        rew += next_state[:, -1, -1:] * 2  # this is delta y
+        d, _ = torch.sort(next_state[:, -1, :720] * 2 + 2, axis=-1)
+        d = d[:, :10].mean(axis=-1, keepdim=True)
         rew += -0.01 / (d + 0.05)  # hard-coded collision coefficient!!
-        if self._get_done(next_state):
-            rew += 20
+        rew += self._get_done(next_state) * 20
         return rew
 
     def _get_done(self, next_state):
-        return next_state[:, -1] > 0.5 
+        return (next_state[:, -1, -1:] > 0.5).long() 
 
     def train(self, replay_buffer, batch_size=256):
         rl_loss_info = super().train(replay_buffer, batch_size)
@@ -338,7 +350,7 @@ class DynaTD3(TD3):
 
 
 class SMCPTD3(TD3):
-    def __init__(self, model, model_optm, horizon=10, num_particle=256, *args, **kw_args):
+    def __init__(self, model, model_optm, horizon, num_particle, *args, **kw_args):
         self.model = model
         self.model_optimizer = model_optm
         self.horizon = horizon
@@ -376,19 +388,21 @@ class SMCPTD3(TD3):
 
     def select_action(self, state):
         if self.exploration_noise > 0:
-            s = state.repeat(self.num_particle).clone()
+            assert len(state.shape) == 2, "does not support batched action selection!"
+            state = torch.FloatTensor(state).to(self.device)[None, ...]  # (batch_size=1, history_length, 723)
+            s = state.repeat(self.num_particle, 1, 1).clone()
             r = 0
-            gamma = torch.zeros(self.num_particle,)
+            gamma = torch.zeros((self.num_particle, 1)).to(self.device)
             with torch.no_grad():
                 for i in range(self.horizon):
                     # Sample action with policy
-                    a = self.actor(state)
-                    a += np.random.normal(0, self.exploration_noise, size=a.shape)
+                    a = self.actor(s)
+                    a += torch.randn_like(a, dtype=torch.float32) * self.exploration_noise
                     if i == 0:
                         a0 = a
                         
                     # simulate trajectories
-                    ns = self.model(s, a)
+                    ns = self.model.sample(s, a)
                     r += self._get_reward(s, ns) * gamma
                     gamma *= (1 - self._get_done(ns))
                     s = ns
@@ -396,7 +410,7 @@ class SMCPTD3(TD3):
                 q = self.critic.Q1(ns, a)
                 r += q * gamma
                 
-                logit_r = F.softmax(r, -1)
+                logit_r = F.softmax(r, -1).view(-1)
                 n = Categorical(logit_r).sample()
                 a = a0[n]
             return a
@@ -405,16 +419,15 @@ class SMCPTD3(TD3):
     
     def _get_reward(self, state, next_state):
         # This is a hard-coded reward function!!
-        rew = 0
-        rew += (next_state[:, -1] - state[:, -1]) * 5 + 2.5
-        d = np.sort(next_state[:720], axis=-1)[:,:10].mean(axis=-1)
+        rew = next_state[:, -1, -1:] * 2  # this is delta y
+        d, _ = torch.sort(next_state[:, -1, :720] * 2 + 2, axis=-1)
+        d = d[:, :10].mean(axis=-1, keepdim=True)
         rew += -0.01 / (d + 0.05)  # hard-coded collision coefficient!!
-        if self._get_done(next_state):
-            rew += 20
+        rew += self._get_done(next_state) * 20
         return rew
 
     def _get_done(self, next_state):
-        return next_state[:, -1] > 0.5
+        return (next_state[:, -1, -1:] > 0.5).long()
 
 
 class ReplayBuffer(object):

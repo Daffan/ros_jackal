@@ -224,11 +224,11 @@ if __name__ == "__main__":
         
         os.mkdir(os.path.join(plugins_dir, "build"))
     
-    wd = os.getcwd()
-    os.chdir(os.path.join(wd, plugins_dir, "build"))
-    subprocess.run(["cmake", ".."])
-    subprocess.call("make")       
-    os.chdir(wd)
+        wd = os.getcwd()
+        os.chdir(os.path.join(wd, plugins_dir, "build"))
+        subprocess.run(["cmake", ".."])
+        subprocess.call("make")       
+        os.chdir(wd)
     
     #2 create .world files
     np.random.seed(args.seed + 1)
