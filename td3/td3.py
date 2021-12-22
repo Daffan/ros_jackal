@@ -274,10 +274,11 @@ class TD3(object):
         }
 
     def train(self, replay_buffer, batch_size=256):
+        if self.safe_rl:
+            return self.safe_train(replay_buffer, batch_size)
         state, action, next_state, reward, not_done, gammas = self.sample_transition(replay_buffer, batch_size)
         loss_info = self.train_rl(state, action, next_state, reward, not_done, gammas)
         return loss_info
-
 
     def safe_train(self, replay_buffer, batch_size=256):
         self.total_it += 1
@@ -365,7 +366,12 @@ class TD3(object):
 
         actor_loss = actor_loss.item() if actor_loss is not None else None
         critic_loss = critic_loss.item()
-        return self.grad_norm(self.actor), self.grad_norm(self.critic), actor_loss, critic_loss
+        return {
+            "Actor_grad_norm": self.grad_norm(self.actor),
+            "Critic_grad_norm": self.grad_norm(self.critic),
+            "Actor_loss": actor_loss,
+            "Critic_loss": critic_loss
+        }
 
     def grad_norm(self, model):
         total_norm = 0

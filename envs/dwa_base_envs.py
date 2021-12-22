@@ -31,10 +31,7 @@ class DWABase(gym.Env):
         collision_reward=0,
         smoothness_reward=0,
         max_collision=10000,
-<<<<<<< HEAD
-=======
         safe_rl=False,
->>>>>>> origin/saferl
         verbose=True
     ):
         """Base RL env that initialize jackal simulation in Gazebo
@@ -56,12 +53,9 @@ class DWABase(gym.Env):
         self.collision_reward = collision_reward
         self.smoothness_reward = smoothness_reward
         self.max_collision = max_collision
-<<<<<<< HEAD
-=======
 
         # for safety learning, separate collision penalty from reward
         self.safe_rl = safe_rl
->>>>>>> origin/saferl
 
         # launch gazebo and dwa demo
         rospy.logwarn(">>>>>>>>>>>>>>>>>> Load world: %s <<<<<<<<<<<<<<<<<<" %(world_name))
@@ -180,21 +174,6 @@ class DWABase(gym.Env):
 
     def _get_reward(self):
         rew = self.slack_reward
-<<<<<<< HEAD
-        if self._get_success():
-            rew += self.success_reward
-        elif self._get_done():
-            # done but not succeed
-            rew += self.failure_reward
-        laser_scan = np.array(self.move_base.get_laser_scan().ranges)
-        d = np.mean(sorted(laser_scan)[:10])
-        if d < 0.3:  # minimum distance 0.3 meter 
-            rew += self.collision_reward / (d + 0.05)
-        smoothness = self._compute_angle(len(self.traj_pos) - 1)
-        self.smoothness += smoothness
-        if self.smoothness_reward > 0:
-            rew += self.smoothness_reward * smoothness
-=======
         if self.step_count >= self.max_step:  # or self._get_flip_status():
             rew += self.failure_reward
         if self._get_success():
@@ -215,7 +194,6 @@ class DWABase(gym.Env):
 
         if not self.safe_rl:
             rew += self.c_rew
->>>>>>> origin/saferl
         return rew
 
     def _compute_angle(self, idx):
