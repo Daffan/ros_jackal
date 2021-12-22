@@ -39,10 +39,10 @@ def main():
                       "TrajectoryPlannerROS/path_distance_bias", 
                       "TrajectoryPlannerROS/goal_distance_bias", 
                       "inflation_radius"],
-        world_name='BARN/world_0.world',
+        world_name='BARN/world_399.world',
         gui=True,
-        init_position=[-2, 2, np.pi/2],
-        goal_position=[0, 10, 0]
+        init_position=[-2.25, 2.5, 1.732],
+        goal_position=[-2.25, 14.5, 0]
     )
     """
     env = gym.make(

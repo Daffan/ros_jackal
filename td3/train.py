@@ -21,7 +21,7 @@ from envs import registration
 from envs.wrappers import ShapingRewardWrapper, StackFrame
 from information_envs import InfoEnv
 from net import *
-from td3 import Actor, Critic, TD3, ReplayBuffer
+from td3 import Actor, Critic, TD3, ReplayBuffer, DynaTD3, Model, SMCPTD3
 from collector import CondorCollector, LocalCollector
 
 def initialize_config(config_path, save_path):
@@ -41,11 +41,21 @@ def initialize_logging(config):
     # Config logging
     now = datetime.now()
     dt_string = now.strftime("%Y_%m_%d_%H_%M")
+    if config["env_config"]["safe_rl"]:
+        mode = config["env_config"]["safe_mode"]
+        string = f"safe_rl_{mode}_"
+        if mode == "lagr":
+            string = string + "lagr"+str(config["env_config"]["safe_lagr"]) + "_"
+    else:
+        string = ""
+
+    string = string + dt_string
+
     save_path = join(
         env_config["save_path"], 
         env_config["env_id"], 
         training_config['algorithm'], 
-        dt_string
+        string
     )
     print("    >>>> Saving to %s" % save_path)
     if not exists(save_path):
@@ -106,7 +116,7 @@ def initialize_policy(config, env):
 
     encoder_type = training_config["encoder"]
     encoder_args = {
-        'input_dim': np.prod(state_dim),
+        'input_dim': state_dim[-1],  # np.prod(state_dim),
         'num_layers': training_config['num_layers'],
         'hidden_size': training_config['hidden_layer_size'],
         'history_length': config["env_config"]["stack_frame"],
@@ -140,19 +150,77 @@ def initialize_policy(config, env):
         critic.parameters(), 
         lr=training_config['critic_lr']
     )
+    if training_config["dyna_style"]:
+        model = Model(
+            state_preprocess=get_encoder(encoder_type, encoder_args),
+            head=MLP(input_dim, 2, training_config['hidden_layer_size']),
+            state_dim=state_dim,
+            deterministic=training_config['deterministic']
+        ).to(device)
+        model_optim = torch.optim.Adam(
+            model.parameters(), 
+            lr=training_config['model_lr']
+        )
+        policy = DynaTD3(
+            model, model_optim,
+            training_config["n_simulated_update"],
+            actor, actor_optim,
+            critic, critic_optim,
+            action_range=[action_space_low, action_space_high],
+            device=device,
+            **training_config["policy_args"]
+        )
+    elif training_config["MPC"]:
+        model = Model(
+            state_preprocess=get_encoder(encoder_type, encoder_args),
+            head=MLP(input_dim, 2, training_config['hidden_layer_size']),
+            state_dim=state_dim,
+            deterministic=training_config['deterministic']
+        ).to(device)
+        model_optim = torch.optim.Adam(
+            model.parameters(), 
+            lr=training_config['model_lr']
+        )
+        policy = SMCPTD3(
+            model, model_optim,
+            training_config["horizon"],
+            training_config["num_particle"],
+            actor, actor_optim,
+            critic, critic_optim,
+            action_range=[action_space_low, action_space_high],
+            device=device,
+            **training_config["policy_args"]
+        )
+    elif config['env_config']["safe_rl"]:
+        safe_critic = Critic(
+            state_preprocess=get_encoder(encoder_type, encoder_args),
+            head=MLP(input_dim, training_config['num_layers'], training_config['hidden_layer_size'])
+        ).to(device)
+        safe_critic_optim = torch.optim.Adam(
+            critic.parameters(), 
+            lr=training_config['critic_lr']
+        )
+        policy = TD3(
+            actor, actor_optim, 
+            critic, critic_optim, 
+            action_range=[action_space_low, action_space_high],
+            safe_critic=safe_critic, safe_critic_optim=safe_critic_optim,
+            device=device,
+            safe_lagr=config['env_config']['safe_lagr'],
+            safe_mode=config['env_config']['safe_mode'],
+            **training_config["policy_args"]
+        )
+    else:
+        policy = TD3(
+            actor, actor_optim, 
+            critic, critic_optim, 
+            action_range=[action_space_low, action_space_high],
+            device=device,
+            **training_config["policy_args"]
+        )
 
-    policy = TD3(
-        actor, actor_optim, 
-        critic, critic_optim, 
-        action_range=[action_space_low, action_space_high],
-        device=device,
-        **training_config["policy_args"]
-    )
-
-    if "pre_train" in training_config.keys() and training_config["pre_train"]:
-        policy.load(training_config["pre_train"], "policy")
-
-    buffer = ReplayBuffer(state_dim, action_dim, training_config['buffer_size'], device=device)
+    buffer = ReplayBuffer(state_dim, action_dim, training_config['buffer_size'],
+                          device=device, safe_rl=config['env_config']["safe_rl"])
 
     return policy, buffer
 
@@ -170,6 +238,7 @@ def train(env, policy, buffer, config):
     training_args = training_config["training_args"]
     print("    >>>> Pre-collect experience")
     collector.collect(n_step=training_config['pre_collect'])
+    print("    >>>> Start training")
 
     n_steps = 0
     n_iter = 0
@@ -191,17 +260,14 @@ def train(env, policy, buffer, config):
             world = d["world"].split("/")[-1]
             world_ep_buf[world].append(d)
 
-        actor_grad_norms = []
-        critic_grad_norms = []
-        actor_losses = []
-        critic_losses = []
+        loss_infos = []
         for _ in range(training_args["update_per_step"]):
-            actor_grad_norm, critic_grad_norm, actor_loss, critic_loss = policy.train(buffer, training_args["batch_size"])
-            if actor_loss is not None:
-                actor_grad_norms.append(actor_grad_norm)
-                actor_losses.append(actor_loss)
-            critic_grad_norms.append(critic_grad_norm)
-            critic_losses.append(critic_loss)
+            loss_info = policy.train(buffer, training_args["batch_size"])
+            loss_infos.append(loss_info)
+
+        loss_info = {}
+        for k in loss_infos[0].keys():
+            loss_info[k] = np.mean([li[k] for li in loss_infos if li[k] is not None])
 
         t1 = time.time()
         log = {
@@ -210,15 +276,12 @@ def train(env, policy, buffer, config):
             "Success": np.mean([epinfo["success"] for epinfo in epinfo_buf]),
             "Time": np.mean([epinfo["ep_time"] for epinfo in epinfo_buf]),
             "Collision": np.mean([epinfo["collision"] for epinfo in epinfo_buf]),
-            "Actor_grad_norm": np.mean(actor_grad_norms),
-            "Critic_grad_norm": np.mean(critic_grad_norms),
-            "Actor_loss": np.mean(actor_losses),
-            "Critic_loss": np.mean(critic_losses),
             "fps": n_steps / (t1 - t0),
             "n_episode": n_ep,
             "Steps": n_steps,
             "Exploration_noise": policy.exploration_noise
         }
+        log.update(loss_info)
         logging.info(pformat(log))
 
         if n_iter % training_config["log_intervals"] == 0:

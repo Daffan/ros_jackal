@@ -83,3 +83,25 @@ condor_q
 
 Logging for training could be found under `logging\<env_id>\<algorithm>\<timestamp>`. To find the logging for HTCondor, check a temporary buffer folder under the home dictionary: `/${HOME}/<hashcode>/out`.
 
+## Safe RL configurations
+Currently we only make modifications to `configs/motion_laser.yaml`. Specifcally, set `safe_rl=True` to start saferl experiment. set `safe_mode=lagr` if we want to use the lagrangian method and set `safe_lagr` accordingly to adjust the lagrangian multiplier. The if `safe_mode` is not lagr, then it will use the lyapunov method. But this method still needs some tuning.
+
+Related files:
+ ```                                                                                                                                                     
+ │                                                                                
+ └───configs                                                             
+ │   │                                                                            
+ │   └───motion_layer.yaml     
+ |
+ └───envs                                                             
+ │   │                                                                            
+ │   └───dwa_base_envs.py (have two separate rewards, approaching goal and avoiding collision)     
+ |
+ └───td3   
+     │                                                                            
+     └───collector.py (collision reward)
+     │                                                                            
+     └───train.py
+     │                                                                            
+     └───td3.py (add the safe methods)
+ ```  

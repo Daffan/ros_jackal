@@ -10,3 +10,4 @@ slurm_logs
 configs
 jackal_helper/models
 jackal_helper/worlds
+jackal_helper/plugins

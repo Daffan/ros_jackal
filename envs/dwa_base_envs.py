@@ -24,12 +24,14 @@ class DWABase(gym.Env):
         goal_position=[4, 0, 0],
         max_step=100,
         time_step=1,
+        local_progress_obs=False,
         slack_reward=-1,
         failure_reward=-50,
         success_reward=0,
         collision_reward=0,
         smoothness_reward=0,
         max_collision=10000,
+        safe_rl=False,
         verbose=True
     ):
         """Base RL env that initialize jackal simulation in Gazebo
@@ -43,6 +45,7 @@ class DWABase(gym.Env):
         self.goal_position = goal_position
         self.verbose = verbose
         self.time_step = time_step
+        self.local_progress_obs = local_progress_obs
         self.max_step = max_step
         self.slack_reward = slack_reward
         self.failure_reward = failure_reward
@@ -50,6 +53,9 @@ class DWABase(gym.Env):
         self.collision_reward = collision_reward
         self.smoothness_reward = smoothness_reward
         self.max_collision = max_collision
+
+        # for safety learning, separate collision penalty from reward
+        self.safe_rl = safe_rl
 
         # launch gazebo and dwa demo
         rospy.logwarn(">>>>>>>>>>>>>>>>>> Load world: %s <<<<<<<<<<<<<<<<<<" %(world_name))
@@ -109,10 +115,10 @@ class DWABase(gym.Env):
         self.gazebo_sim.reset()
         self._reset_move_base()
         self.start_time = rospy.get_time()
+        self.traj_pos = []
         obs = self._get_observation()
         self.gazebo_sim.pause()
         self.collision_count = 0
-        self.traj_pos = []
         self.smoothness = 0
         return obs
 
@@ -136,14 +142,16 @@ class DWABase(gym.Env):
         """
         self._take_action(action)
         self.step_count += 1
+        
+        pos = self.gazebo_sim.get_model_state().pose.position
+        self.traj_pos.append((pos))
+        
         self.gazebo_sim.unpause()
         obs = self._get_observation()
         rew = self._get_reward()
         done = self._get_done()
         info = self._get_info()
         self.gazebo_sim.pause()
-        pos = self.gazebo_sim.get_model_state().pose.position
-        self.traj_pos.append((pos.x, pos.y))
         return obs, rew, done, info
 
     def _take_action(self, action):
@@ -158,7 +166,7 @@ class DWABase(gym.Env):
                                    self.move_base.robot_config.Y]) # robot position in odom frame
         goal_position = np.array(self.goal_position[:2])
         if self.world_name.startswith("BARN"):
-            robot_position = self.gazebo_sim.get_model_state().pose.position
+            robot_position = self.traj_pos[-1]
             return robot_position.y > 11  # the special condition for BARN    
         else:
             self.goal_distance = np.sqrt(np.sum((robot_position - goal_position) ** 2))
@@ -170,13 +178,22 @@ class DWABase(gym.Env):
             rew += self.failure_reward
         if self._get_success():
             rew += self.success_reward
+
+        # add smoothness reward
+        #smoothness = self._compute_angle(len(self.traj_pos) - 1)
+        #rew += self.smoothness_reward * smoothness
+        #self.smoothness += smoothness
+
+        # calculate penalty
         laser_scan = np.array(self.move_base.get_laser_scan().ranges)
         d = np.mean(sorted(laser_scan)[:10])
         if d < 0.3:  # minimum distance 0.3 meter 
-            rew += self.collision_reward / (d + 0.05)
-        smoothness = self._compute_angle(len(self.traj_pos) - 1)
-        rew += self.smoothness_reward * smoothness
-        self.smoothness += smoothness
+            self.c_rew = self.collision_reward / (d + 0.05)
+        else:
+            self.c_rew = 0.
+
+        if not self.safe_rl:
+            rew += self.c_rew
         return rew
 
     def _compute_angle(self, idx):
@@ -184,9 +201,9 @@ class DWABase(gym.Env):
             return np.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
         assert self.traj_pos is not None
         if len(self.traj_pos) > 2:
-            x1, y1 = self.traj_pos[idx - 2]
-            x2, y2 = self.traj_pos[idx - 1]
-            x3, y3 = self.traj_pos[idx]
+            x1, y1 = self.traj_pos[idx - 2].x, self.traj_pos[idx - 2].y
+            x2, y2 = self.traj_pos[idx - 1].x, self.traj_pos[idx - 1].y
+            x3, y3 = self.traj_pos[idx].x, self.traj_pos[idx].y
             a = - np.arccos(((x2 - x1) * (x3 - x2) + (y2 - y1) * (y3 - y2)) / dis(x1, y1, x2, y2) / dis(x2, y2, x3, y3))
         else:
             a = 0
@@ -198,7 +215,7 @@ class DWABase(gym.Env):
         return done
 
     def _get_flip_status(self):
-        robot_position = self.gazebo_sim.get_model_state().pose.position
+        robot_position = self.traj_pos[-1]
         return robot_position.z > 0.1
 
     def _get_info(self):
@@ -210,7 +227,8 @@ class DWABase(gym.Env):
             time=rospy.get_time() - self.start_time,
             collision=self.collision_count,
             recovery=1.0 * bn / nn,
-            smoothness=self.smoothness
+            smoothness=self.smoothness,
+            collision_reward=self.c_rew,
         )
 
     def _get_local_goal(self):
@@ -235,14 +253,15 @@ class DWABase(gym.Env):
         if world_name.startswith("BARN"):
             path_dir = join(self.BASE_PATH, "worlds", "BARN", "path_files")
             world_id = int(world_name.split('_')[-1].split('.')[0])
-            path = np.load(join(path_dir, 'path_%d.npy' % world_id))
-            init_x, init_y = self._path_coord_to_gazebo_coord(*path[0])
-            goal_x, goal_y = self._path_coord_to_gazebo_coord(*path[-1])
-            init_y -= 1
-            goal_x -= init_x
-            goal_y -= (init_y-5) # put the goal 5 meters backward
-            self.init_position = [init_x, init_y, np.pi/2]
-            self.goal_position = [goal_x, goal_y, 0]
+            if os.path.exists(join(path_dir, 'path_%d.npy' % world_id)):
+                path = np.load(join(path_dir, 'path_%d.npy' % world_id))
+                init_x, init_y = self._path_coord_to_gazebo_coord(*path[0])
+                goal_x, goal_y = self._path_coord_to_gazebo_coord(*path[-1])
+                init_y -= 1
+                goal_x -= init_x
+                goal_y -= (init_y-5) # put the goal 5 meters backward
+                self.init_position = [init_x, init_y, np.pi/2]
+                self.goal_position = [goal_x, goal_y, 0]
 
     def _path_coord_to_gazebo_coord(self, x, y):
         RADIUS = 0.075
@@ -261,10 +280,11 @@ class DWABaseLaser(DWABase):
         self.laser_clip = laser_clip
         
         # 720 laser scan + local goal (in angle)
+        obs_dim = 721 if not self.local_progress_obs else 723
         self.observation_space = Box(
             low=0,
             high=laser_clip,
-            shape=(721,),
+            shape=(obs_dim,),
             dtype=np.float32
         )
 
@@ -283,10 +303,20 @@ class DWABaseLaser(DWABase):
         laser_scan = self._get_laser_scan()
         local_goal = self._get_local_goal()
         
-        laser_scan = (laser_scan - self.laser_clip/2.) / self.laser_clip # scale to (-0.5, 0.5)
-        local_goal = local_goal / (2.0 * np.pi) # scale to (-0.5, 0.5)
+        laser_scan = (laser_scan - self.laser_clip/2.) / self.laser_clip * 2 # scale to (-1, 1)
+        local_goal = local_goal / (np.pi) # scale to (-1, 1)
+        
+        obs = [laser_scan, local_goal]
+        if self.local_progress_obs:
+            if len(self.traj_pos) > 1:
+                pos = self.traj_pos[-1]
+                last_pos = self.traj_pos[-2]
+                local_progress = (np.array([pos.x, pos.y]) - np.array([last_pos.x, last_pos.y])) / 2.
+            else:
+                local_progress = np.array([0, 0])
+            obs += [local_progress]
 
-        obs = np.concatenate([laser_scan, local_goal])
+        obs = np.concatenate(obs)
 
         return obs
 

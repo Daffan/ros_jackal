@@ -22,6 +22,15 @@ class StackFrame(gym.Wrapper):
     def __init__(self, env, stack_frame=1):
         super().__init__(env)
         self.stack_frame = stack_frame
+        low = self.observation_space.low
+        high = self.observation_space.high
+        low = np.repeat(low[None, :], stack_frame, axis=0)
+        high = np.repeat(high[None, :], stack_frame, axis=0)
+        self.observation_space = gym.spaces.Box(
+            low=low,
+            high=high,
+            dtype=np.float32
+        )
 
     def reset(self):
         self.frames = deque(maxlen=self.stack_frame)

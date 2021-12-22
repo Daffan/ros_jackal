@@ -37,10 +37,10 @@ class MotionControlContinuous(DWABase):
         self.move_base.make_plan()
         self._clear_costmap()
         self.start_time = rospy.get_time()
+        self.traj_pos = []
         obs = self._get_observation()
         self.gazebo_sim.pause()
         self.collision_count = 0
-        self.traj_pos = []
         self.smoothness = 0
         return obs
 

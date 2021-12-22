@@ -19,6 +19,12 @@ from envs.wrappers import ShapingRewardWrapper, StackFrame
 
 BUFFER_PATH = os.getenv('BUFFER_PATH')
 
+# add path to the plugins to the GAZEBO_PLUGIN_PATH
+gpp = os.getenv('GAZEBO_PLUGIN_PATH') if os.getenv('GAZEBO_PLUGIN_PATH') is not None else ""
+wd = os.getcwd()
+os.environ['GAZEBO_PLUGIN_PATH'] = os.path.join(wd, "jackal_helper/plugins/build") + ":" + gpp
+rospy.logwarn(os.environ['GAZEBO_PLUGIN_PATH'])
+
 def initialize_actor(id):
     rospy.logwarn(">>>>>>>>>>>>>>>>>> actor id: %s <<<<<<<<<<<<<<<<<<" %(str(id)))
     assert os.path.exists(BUFFER_PATH), BUFFER_PATH
