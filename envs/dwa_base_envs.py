@@ -203,7 +203,8 @@ class DWABase(gym.Env):
 
     def _get_info(self):
         bn, nn = self.move_base.get_bad_vel_num()
-        self.collision_count += self.move_base.get_collision()
+        collided = self.move_base.get_hard_collision()  # changed to hard collision
+        self.collision_count += collided
         return dict(
             world=self.world_name,
             time=rospy.get_time() - self.start_time,

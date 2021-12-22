@@ -43,4 +43,6 @@
     <arg name="joystick" value="$(arg joystick)" />
   </include>
 
+  <node pkg="jackal_helper" type="collision_publisher_node" name="collision_publisher_node" />
+
 </launch>

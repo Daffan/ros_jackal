@@ -16,6 +16,7 @@ from move_base_msgs.msg import MoveBaseGoal, MoveBaseAction
 from sensor_msgs.msg import LaserScan
 from nav_msgs.msg import OccupancyGrid, Path, Odometry
 from nav_msgs.srv import GetPlan
+from std_msgs.msg import Bool
 
 def _create_MoveBaseGoal(x, y, angle):
     """
@@ -63,6 +64,7 @@ class Robot_config():
         self.los = 1
         self.bad_vel = 0
         self.vel_counter = 0
+        self.collision_count = 0
         self.qt = (0, 0, 0, 0)
 
     def get_robot_status(self, msg):
@@ -104,6 +106,10 @@ class Robot_config():
         if vx <= 0.05:
             self.bad_vel += 1
         self.vel_counter += 1
+        
+    def collision_monitor(self, msg):
+        if msg.data:
+            self.collision_count += 1
 
 
 def transform_lg(wp, X, Y, PSI):
@@ -143,6 +149,7 @@ class MoveBase():
         # self.sub_gp = rospy.Subscriber("/move_base/" + self.base_local_planner + "/global_plan", Path, self.robot_config.get_global_path)
         self.sub_gp = rospy.Subscriber("/move_base/NavfnROS/plan", Path, self.robot_config.get_global_path)
         self.sub_vel = rospy.Subscriber("/jackal_velocity_controller/cmd_vel", Twist, self.robot_config.vel_monitor)
+        self.collision_count = rospy.Subscriber("/collision", Bool, self.robot_config.collision_monitor)
 
         self.laser_scan = None
 
@@ -186,6 +193,12 @@ class MoveBase():
             self.laser_scan = None
         d = np.mean(sorted(laser_scan)[:5])
         return d < 0.3
+    
+    def get_hard_collision(self):
+        # hard collision count since last call
+        collision_count = self.robot_config.collision_count
+        self.robot_config.collision_count = 0
+        return collision_count > 0
 
     def set_global_goal(self):
         self.nav_as.wait_for_server()

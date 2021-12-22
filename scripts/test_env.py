@@ -16,6 +16,7 @@ from envs.wrappers import ShapingRewardWrapper
 
 def main():
     
+    """
     env = gym.make(
         id='dwa_param_continuous_laser-v0',
         base_local_planner="eband_local_planner/EBandPlannerROS",
@@ -26,6 +27,7 @@ def main():
         init_position=[-2, 2, np.pi/2],
         goal_position=[0, 10, 0]
     )
+    """
     """
     env = gym.make(
         id='dwa_param_continuous_laser-v0', 
@@ -43,10 +45,9 @@ def main():
         goal_position=[0, 10, 0]
     )
     """
-    """
     env = gym.make(
         id='motion_control_continuous_laser-v0', 
-        world_name='world_0.world',
+        world_name='BARN/world_0.world',
         gui=True,
         init_position=[-2, 2, np.pi/2],
         goal_position=[0, 10, 0],
@@ -56,7 +57,6 @@ def main():
         collision_reward=-10,
         failure_reward=-50
     )
-    """
     env = ShapingRewardWrapper(env)
     env.reset()
     done  = False
@@ -79,7 +79,7 @@ def main():
         Y = env.move_base.robot_config.Y
         X = env.move_base.robot_config.X
         p = env.gazebo_sim.get_model_state().pose.position
-        print('current step: %d, time: %.2f, X position: %f(world_frame), %f(odem_frame), Y position: %f(world_frame), %f(odom_frame), rew: %f' %(count, info["time"], p.x, X, p.y, Y , rew))
+        print('current step: %d, time: %.2f, X position: %f(world_frame), %f(odem_frame), Y position: %f(world_frame), %f(odom_frame), rew: %f, collision: %d' %(count, info["time"], p.x, X, p.y, Y , rew, info["collision"]))
         print("actions: ", actions)
         # env.visual_costmap(obs)
         if done:
