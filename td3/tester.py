@@ -44,7 +44,6 @@ def main(args):
     ep = 0
     while ep < num_trials:
         obs = env.reset()
-        ep += 1
         traj = []
         done = False
         while not done:
@@ -59,7 +58,7 @@ def main(args):
 
             # _debug_print_robot_status(env, len(traj), rew)
 
-        write_buffer(traj, ep, args.id)
+        ep = write_buffer(traj, args.id)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description = 'start an tester')

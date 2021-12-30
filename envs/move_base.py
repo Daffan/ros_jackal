@@ -63,7 +63,7 @@ class Robot_config():
         self.gp = 0
         self.los = 1
         self.bad_vel = 0
-        self.vel_counter = 0
+        self.vel_counter = 1  # avoid divided by zero error
         self.collision_count = 0
         self.qt = (0, 0, 0, 0)
 

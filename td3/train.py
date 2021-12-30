@@ -103,7 +103,7 @@ def get_encoder(encoder_type, args):
         raise Exception(f"[error] Unknown encoder type {encoder_type}!")
     return encoder
 
-def initialize_policy(config, env):
+def initialize_policy(config, env, init_buffer=True):
     training_config = config["training_config"]
 
     state_dim = env.observation_space.shape
@@ -218,9 +218,11 @@ def initialize_policy(config, env):
             device=device,
             **training_config["policy_args"]
         )
-
-    buffer = ReplayBuffer(state_dim, action_dim, training_config['buffer_size'],
-                          device=device, safe_rl=config['env_config']["safe_rl"])
+    if init_buffer:
+        buffer = ReplayBuffer(state_dim, action_dim, training_config['buffer_size'],
+                            device=device, safe_rl=config['env_config']["safe_rl"])
+    else:
+        buffer = None
 
     return policy, buffer
 

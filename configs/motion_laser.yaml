@@ -3,7 +3,7 @@ env_config:
   env_id: "motion_control_continuous_laser-v0"
   seed: 13
   shaping_reward: True
-  stack_frame: 1
+  stack_frame: 8
   safe_rl: False # for safe RL
   safe_mode: "lagr" # for safe RL
   safe_lagr: 2. # for safe RL
@@ -16,7 +16,7 @@ env_config:
     laser_clip: 2
     local_progress_obs: False
     slack_reward: 0
-    collision_reward: -0.01
+    collision_reward: 0
     failure_reward: 0
     success_reward: 20
     max_collision: 1
@@ -26,14 +26,14 @@ env_config:
 training_config:
   algorithm: "TD3"
   network: "mlp"
-  encoder: "mlp"
+  encoder: "cnn"
   buffer_size: 200000
   actor_lr: 0.00001
   critic_lr: 0.00002
   num_layers: 1
   hidden_layer_size: 512
-  exploration_noise_start: 0.2
-  exploration_noise_end: 0.1999
+  exploration_noise_start: 0.1
+  exploration_noise_end: 0.0999
   pre_collect: 4096
   log_intervals: 2
 
@@ -54,7 +54,7 @@ training_config:
     n_step: 4
 
   training_args:
-    max_step: 4000000
+    max_step: 2000000
     collect_per_step: 4096
     update_per_step: 1024
     batch_size: 128

@@ -59,13 +59,21 @@ def load_policy(policy):
             time.sleep(1)
     return policy
 
-def write_buffer(traj, ep, id):
+def write_buffer(traj, id):
+    file_names = os.listdir(join(BUFFER_PATH, 'actor_%s' %(str(id))))
+    if len(file_names) == 0:
+        ep = 0
+    else:
+        eps = [int(f.split("_")[-1].split(".pickle")) for f in file_names]  # last index under this folder
+        sorted(eps)
+        ep = eps[-1]
     with open(join(BUFFER_PATH, 'actor_%s' %(str(id)), 'traj_%d.pickle' %(ep)), 'wb') as f:
         try:
             pickle.dump(traj, f)
         except OSError as e:
             logging.exception('Failed to dump the trajectory! %s', e)
             pass
+    return ep
 
 def get_world_name(config, id):
     if len(config["condor_config"]["worlds"]) < config["condor_config"]["num_actor"]:
@@ -97,13 +105,11 @@ def main(id):
         env = ShapingRewardWrapper(env)
     env = StackFrame(env, stack_frame=env_config["stack_frame"])
 
-    policy, _ = initialize_policy(config, env)
+    policy, _ = initialize_policy(config, env, init_buffer=False)
 
     print(">>>>>>>>>>>>>> Running on %s <<<<<<<<<<<<<<<<" %(world_name))
-    ep = 0
     while True:
         obs = env.reset()
-        ep += 1
         traj = []
         done = False
         policy = load_policy(policy)
@@ -116,7 +122,7 @@ def main(id):
 
             _debug_print_robot_status(env, len(traj), rew, actions)
 
-        write_buffer(traj, ep, id)
+        write_buffer(traj, id)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description = 'start an actor')
