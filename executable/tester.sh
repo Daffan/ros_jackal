@@ -6,4 +6,4 @@ export ROS_MASTER_URI=http://localhost:11311
 # tons of log file saved tons of log file saved to the user homedir
 export ROS_LOG_DIR=/tmp
 
-./singularity_run.sh python3 td3/tester.py ${@:1}
+./singularity_run.sh python3 td3/tester.py --id ${@:1}

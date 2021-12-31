@@ -64,9 +64,10 @@ def write_buffer(traj, id):
     if len(file_names) == 0:
         ep = 0
     else:
-        eps = [int(f.split("_")[-1].split(".pickle")) for f in file_names]  # last index under this folder
+        eps = [int(f.split("_")[-1].split(".pickle")[0]) for f in file_names]  # last index under this folder
         sorted(eps)
-        ep = eps[-1]
+        ep = eps[-1] + 1
+    print(">>>>>>>>>>>>>>>>>>>>>>>>>", ep)
     with open(join(BUFFER_PATH, 'actor_%s' %(str(id)), 'traj_%d.pickle' %(ep)), 'wb') as f:
         try:
             pickle.dump(traj, f)

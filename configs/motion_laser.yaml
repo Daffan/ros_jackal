@@ -16,7 +16,7 @@ env_config:
     laser_clip: 2
     local_progress_obs: False
     slack_reward: 0
-    collision_reward: 0
+    collision_reward: 0 
     failure_reward: 0
     success_reward: 20
     max_collision: 1
@@ -26,7 +26,7 @@ env_config:
 training_config:
   algorithm: "TD3"
   network: "mlp"
-  encoder: "cnn"
+  encoder: "transformer"
   buffer_size: 200000
   actor_lr: 0.00001
   critic_lr: 0.00002

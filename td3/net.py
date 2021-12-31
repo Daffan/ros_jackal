@@ -1,8 +1,8 @@
 import numpy as np
 import torch
 import torch.nn as nn
-#import transformers
-#from trajectory_gpt2 import GPT2Model
+import transformers
+from trajectory_gpt2 import GPT2Model
 
 class Encoder(nn.Module):
     """
@@ -135,7 +135,6 @@ class RNNEncoder(Encoder):
         return y
 
 
-"""
 class TransformerEncoder(Encoder):
     #
     #This model uses GPT to model (state_1(action_1), state_2(action_2), ...)
@@ -159,7 +158,7 @@ class TransformerEncoder(Encoder):
             vocab_size=1,  # doesn't matter -- we don't use the vocab
             n_embd=hidden_size,
             n_layer=num_layers,
-            **kwargs
+            n_head=8
         )
 
         # note: the only difference between this GPT2Model and the default Huggingface version
@@ -173,8 +172,9 @@ class TransformerEncoder(Encoder):
     def forward(self, states, actions=None):
         batch_size, seq_length = states.shape[0], states.shape[1]
 
-        attention_mask = torch.ones((batch_size, seq_length), dtype=torch.long)
+        attention_mask = torch.ones((batch_size, seq_length), dtype=torch.long).to(states.device)
         state_embeddings = self.embed_state(states)
+        timesteps = torch.tensor([list(range(seq_length))] * batch_size, dtype=torch.long).to(states.device)
         time_embeddings = self.embed_timestep(timesteps)
         inputs = state_embeddings + time_embeddings
         inputs = self.embed_ln(inputs)
@@ -187,9 +187,6 @@ class TransformerEncoder(Encoder):
         x = transformer_outputs['last_hidden_state'] # [batch, history_length, hidden_size]
         x = x[:,-1]
         return x
-"""
-
-
 
 #### below are previous code
 
