@@ -11,6 +11,7 @@ import shutil
 import logging
 import collections
 import time
+import uuid
 from pprint import pformat
 
 import torch
@@ -55,7 +56,8 @@ def initialize_logging(config):
         env_config["save_path"], 
         env_config["env_id"], 
         training_config['algorithm'], 
-        string
+        string,
+        uuid.uuid4().hex[:4]
     )
     print("    >>>> Saving to %s" % save_path)
     if not exists(save_path):

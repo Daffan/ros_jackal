@@ -178,7 +178,7 @@ if __name__ == "__main__":
                     ep_length = len(traj)
                     success = int(traj[-1][-1]['success'])
                     ep_time = float(traj[-1][-1]['time'])
-                    collision = sum([int(s[-1]["collision"]) for s in traj])
+                    collision = int(traj[-1][-1]['collision'])
                     recovery = float(traj[-1][-1]['recovery'])
                 j.Remove()
                 results[world].append((ep_return, ep_length, success, ep_time, collision, recovery))

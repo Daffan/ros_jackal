@@ -149,8 +149,8 @@ class DWABase(gym.Env):
         self.gazebo_sim.unpause()
         obs = self._get_observation()
         rew = self._get_reward()
-        done = self._get_done()
         info = self._get_info()
+        done = self._get_done()
         self.gazebo_sim.pause()
         return obs, rew, done, info
 
@@ -211,7 +211,7 @@ class DWABase(gym.Env):
 
     def _get_done(self):
         success = self._get_success()
-        done = success or self.step_count >= self.max_step or self._get_flip_status() or self.collision_count > self.max_collision
+        done = success or self.step_count >= self.max_step or self._get_flip_status() or self.collision_count >= self.max_collision
         return done
 
     def _get_flip_status(self):

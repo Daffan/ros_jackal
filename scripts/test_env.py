@@ -47,7 +47,7 @@ def main():
     """
     env = gym.make(
         id='motion_control_continuous_laser-v0', 
-        world_name='BARN/world_0.world',
+        world_name='BARN/world_192.world',
         gui=True,
         init_position=[-2, 2, np.pi/2],
         goal_position=[0, 10, 0],
@@ -55,7 +55,8 @@ def main():
         slack_reward=0,
         success_reward=10,
         collision_reward=-10,
-        failure_reward=-50
+        failure_reward=-50,
+        max_collision=0
     )
     env = ShapingRewardWrapper(env)
     env.reset()
