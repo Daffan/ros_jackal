@@ -160,6 +160,11 @@ if __name__ == "__main__":
     tmp_ids = []
     ids = list(range(num_actor))
     results = DefaultDict(list)
+    
+    acc_mean_return = []
+    acc_mean_success = []
+    acc_mean_time = []
+    
     while len(jobs) > 0:
         time.sleep(20)
         for i, j in zip(ids, jobs):
@@ -180,18 +185,24 @@ if __name__ == "__main__":
                     ep_time = float(traj[-1][-1]['time'])
                     collision = int(traj[-1][-1]['collision'])
                     recovery = float(traj[-1][-1]['recovery'])
+                    results[world].append((ep_return, ep_length, success, ep_time, collision, recovery))
                 j.Remove()
-                results[world].append((ep_return, ep_length, success, ep_time, collision, recovery))
                 mean_return = np.mean([t[0] for t in results[world]])
                 mean_length = np.mean([t[1] for t in results[world]])
                 mean_success = np.mean([t[2] for t in results[world]])
+                mean_all_time = np.mean([t[3] for t in results[world]])
                 times = [t[3] for t in results[world] if t[2] > 0]
                 mean_time = np.mean(times) if len(times) > 0 else 0
                 mean_collision = np.mean([t[4] for t in results[world]])
                 mean_recovery = np.mean([t[5] for t in results[world]])
                 
-                print("finishing world %d: %.2f, %.2f, %.2f, %.2f, %.2f, %.2f" \
-                    %(world, mean_return, mean_length, mean_success, mean_time, mean_collision, mean_recovery))
+                print("finishing world %d: %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, support %d/%d" \
+                    %(world, mean_return, mean_length, mean_success, mean_time, mean_collision, mean_recovery, mean_all_time, len(times), len(results[world])))
+                
+                acc_mean_return.append(mean_return)
+                acc_mean_success.append(mean_success)
+                if mean_time > 0:
+                    acc_mean_time.append(mean_time)
                 continue
             tmp_jobs.append(j)
             tmp_ids.append(i)
@@ -201,7 +212,8 @@ if __name__ == "__main__":
         tmp_ids = []
         
     with open(join(model_dir, "test_results.pickle"), "wb") as f:
-        f.dump(results)
+        pickle.dump(results, f)
+    print("mean return: %.2f, success: %.2f, time: %.2f" %(np.mean(acc_mean_return), np.mean(acc_mean_success), np.mean(acc_mean_time)))
 
-    shutil.rmtree(buffer_path)
+    shutil.rmtree(buffer_path, ignore_errors=True)
             

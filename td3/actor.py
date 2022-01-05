@@ -107,6 +107,7 @@ def main(id):
     env = StackFrame(env, stack_frame=env_config["stack_frame"])
 
     policy, _ = initialize_policy(config, env, init_buffer=False)
+    bad_traj_count = 0
 
     print(">>>>>>>>>>>>>> Running on %s <<<<<<<<<<<<<<<<" %(world_name))
     while True:
@@ -122,6 +123,14 @@ def main(id):
             obs = obs_new
 
             _debug_print_robot_status(env, len(traj), rew, actions)
+            
+        time_per_step = info['time'] / len(traj)  # sometimes, the simulation runs very slow, need restart
+        if len(traj) > 1 and time_per_step < (0.1 + config["env_config"]["kwargs"]["time_step"]):
+            _ = write_buffer(traj, id)
+        else:  # for some reason, the progress might just dead or always give fail traj with only 1 step
+            bad_traj_count += 1
+            if bad_traj_count >= 5:
+                break
 
         write_buffer(traj, id)
 

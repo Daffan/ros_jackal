@@ -283,7 +283,7 @@ def train(env, policy, buffer, config):
             "fps": n_steps / (t1 - t0),
             "n_episode": n_ep,
             "Steps": n_steps,
-            "Exploration_noise": policy.exploration_noise
+            "Exploration_noise": policy.exploration_noise,
         }
         log.update(loss_info)
         logging.info(pformat(log))
@@ -292,6 +292,7 @@ def train(env, policy, buffer, config):
             for k in log.keys():
                 writer.add_scalar('train/' + k, log[k], global_step=n_steps)
             policy.save(save_path, "policy")
+            print("Logging to %s" %save_path)
 
             for k in world_ep_buf.keys():
                 writer.add_scalar(k + "/Episode_return", np.mean([epinfo["ep_rew"] for epinfo in world_ep_buf[k]]), global_step=n_steps)

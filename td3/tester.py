@@ -42,6 +42,7 @@ def main(args):
 
     print(">>>>>>>>>>>>>> Running on %s <<<<<<<<<<<<<<<<" %(world_name))
     ep = 0
+    bad_traj_count = 0
     while ep < num_trials:
         obs = env.reset()
         traj = []
@@ -57,8 +58,14 @@ def main(args):
             obs = obs_new
 
             # _debug_print_robot_status(env, len(traj), rew)
-
-        ep = write_buffer(traj, args.id)
+        
+        time_per_step = info['time'] / len(traj)  # sometimes, the simulation runs very slow, need restart
+        if len(traj) > 1 and time_per_step < (0.1 + config["env_config"]["kwargs"]["time_step"]):
+            ep = write_buffer(traj, args.id)
+        else:  # for some reason, the progress might just dead or always give fail traj with only 1 step
+            bad_traj_count += 1
+            if bad_traj_count >= 5:
+                break
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description = 'start an tester')
