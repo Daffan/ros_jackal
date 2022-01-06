@@ -8,7 +8,7 @@ from geometry_msgs.msg import Twist
 from envs.dwa_base_envs import DWABase, DWABaseLaser, DWABaseCostmap, DWABaseCostmapResnet
 
 RANGE_DICT = {
-    "linear_velocity": [-0.2, 2],
+    "linear_velocity": [-1, 2],
     "angular_velocity": [-3.14, 3.14],
 }
 

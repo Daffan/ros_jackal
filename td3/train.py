@@ -119,8 +119,8 @@ def initialize_policy(config, env, init_buffer=True):
     encoder_type = training_config["encoder"]
     encoder_args = {
         'input_dim': state_dim[-1],  # np.prod(state_dim),
-        'num_layers': training_config['num_layers'],
-        'hidden_size': training_config['hidden_layer_size'],
+        'num_layers': training_config['encoder_num_layers'],
+        'hidden_size': training_config['encoder_hidden_layer_size'],
         'history_length': config["env_config"]["stack_frame"],
     }
 
