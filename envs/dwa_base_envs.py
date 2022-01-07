@@ -90,6 +90,7 @@ class DWABase(gym.Env):
 
         self.step_count = 0
         self.traj_pos = None
+        self.traj_ori = None
 
     def launch_move_base(self, goal_position, base_local_planner):
         rospack = rospkg.RosPack()
@@ -116,6 +117,7 @@ class DWABase(gym.Env):
         self._reset_move_base()
         self.start_time = rospy.get_time()
         self.traj_pos = []
+        self.traj_ori = []
         obs = self._get_observation()
         self.gazebo_sim.pause()
         self.collision_count = 0
@@ -143,8 +145,11 @@ class DWABase(gym.Env):
         self._take_action(action)
         self.step_count += 1
         
-        pos = self.gazebo_sim.get_model_state().pose.position
+        pose = self.gazebo_sim.get_model_state().pose
+        pos = pose.position
+        ori = pose.orientation.w
         self.traj_pos.append((pos))
+        self.traj_ori.append(ori)
         
         self.gazebo_sim.unpause()
         obs = self._get_observation()
@@ -280,7 +285,7 @@ class DWABaseLaser(DWABase):
         self.laser_clip = laser_clip
         
         # 720 laser scan + local goal (in angle)
-        obs_dim = 721 if not self.local_progress_obs else 723
+        obs_dim = 721 if not self.local_progress_obs else 724
         self.observation_space = Box(
             low=0,
             high=laser_clip,
@@ -311,9 +316,11 @@ class DWABaseLaser(DWABase):
             if len(self.traj_pos) > 1:
                 pos = self.traj_pos[-1]
                 last_pos = self.traj_pos[-2]
-                local_progress = (np.array([pos.x, pos.y]) - np.array([last_pos.x, last_pos.y])) / 2.
+                ori = self.traj_ori[-1]
+                last_ori = self.traj_ori[-2]
+                local_progress = (np.array([pos.x, pos.y, ori]) - np.array([last_pos.x, last_pos.y, last_ori])) / 2.
             else:
-                local_progress = np.array([0, 0])
+                local_progress = np.array([0, 0, 0])
             obs += [local_progress]
 
         obs = np.concatenate(obs)

@@ -1,4 +1,4 @@
-from actor import initialize_actor, write_buffer
+from actor import initialize_actor, write_buffer, _debug_print_robot_status
 from train import initialize_policy
 import os
 from os.path import dirname, abspath, join
@@ -57,7 +57,7 @@ def main(args):
             traj.append([None, None, rew, done, info])  # For testing, we only need rew and ep_length
             obs = obs_new
 
-            # _debug_print_robot_status(env, len(traj), rew)
+            _debug_print_robot_status(env, len(traj), rew, actions)
         
         time_per_step = info['time'] / len(traj)  # sometimes, the simulation runs very slow, need restart
         if len(traj) > 1 and time_per_step < (0.1 + config["env_config"]["kwargs"]["time_step"]):
