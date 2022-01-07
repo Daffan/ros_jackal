@@ -194,6 +194,7 @@ class DWABase(gym.Env):
         # calculate penalty
         laser_scan = np.array(self.move_base.get_laser_scan().ranges)
         d = np.mean(sorted(laser_scan)[:10])
+        self.collided = self.move_base.get_hard_collision()  # changed to hard collision
         if self.collided:  # minimum distance 0.3 meter
             self.c_rew = self.collision_reward
         else:
@@ -227,7 +228,6 @@ class DWABase(gym.Env):
 
     def _get_info(self):
         bn, nn = self.move_base.get_bad_vel_num()
-        self.collided = self.move_base.get_hard_collision()  # changed to hard collision
         self.collision_count += self.collided
         return dict(
             world=self.world_name,
