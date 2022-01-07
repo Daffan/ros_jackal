@@ -91,6 +91,7 @@ class DWABase(gym.Env):
         self.step_count = 0
         self.traj_pos = None
         self.traj_ori = None
+        self.collided = None
 
     def launch_move_base(self, goal_position, base_local_planner):
         rospack = rospkg.RosPack()
@@ -118,6 +119,7 @@ class DWABase(gym.Env):
         self.start_time = rospy.get_time()
         self.traj_pos = []
         self.traj_ori = []
+        self.collided = False
         obs = self._get_observation()
         self.gazebo_sim.pause()
         self.collision_count = 0
@@ -192,8 +194,8 @@ class DWABase(gym.Env):
         # calculate penalty
         laser_scan = np.array(self.move_base.get_laser_scan().ranges)
         d = np.mean(sorted(laser_scan)[:10])
-        if d < 0.3:  # minimum distance 0.3 meter 
-            self.c_rew = self.collision_reward / (d + 0.05)
+        if self.collided:  # minimum distance 0.3 meter
+            self.c_rew = self.collision_reward
         else:
             self.c_rew = 0.
 
@@ -225,8 +227,8 @@ class DWABase(gym.Env):
 
     def _get_info(self):
         bn, nn = self.move_base.get_bad_vel_num()
-        collided = self.move_base.get_hard_collision()  # changed to hard collision
-        self.collision_count += collided
+        self.collided = self.move_base.get_hard_collision()  # changed to hard collision
+        self.collision_count += self.collided
         return dict(
             world=self.world_name,
             time=rospy.get_time() - self.start_time,
