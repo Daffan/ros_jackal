@@ -28,6 +28,7 @@ def main(args):
     config = initialize_actor(args.id)
     num_trials = config["condor_config"]["num_trials"]
     env_config = config['env_config']
+    env_config["kwargs"]["safe_rl"] = env_config["safe_rl"]
     world_name = get_world_name(config, args.id)
     test_object = config["condor_config"]["test_object"]
 

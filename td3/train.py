@@ -73,6 +73,7 @@ def initialize_logging(config):
 
 def initialize_envs(config):
     env_config = config["env_config"]
+    env_config["kwargs"]["safe_rl"] = env_config["safe_rl"]
     
     if not env_config["use_condor"]:
         env = gym.make(env_config["env_id"], **env_config["kwargs"])

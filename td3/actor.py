@@ -99,6 +99,7 @@ def _debug_print_robot_status(env, count, rew, actions):
 def main(id):
     config = initialize_actor(id)
     env_config = config['env_config']
+    env_config["kwargs"]["safe_rl"] = env_config["safe_rl"]
     world_name = get_world_name(config, id)
     env_config["kwargs"]["world_name"] = world_name
     env = gym.make(env_config["env_id"], **env_config["kwargs"])
