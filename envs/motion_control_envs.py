@@ -7,17 +7,17 @@ from geometry_msgs.msg import Twist
 
 from envs.dwa_base_envs import DWABase, DWABaseLaser, DWABaseCostmap, DWABaseCostmapResnet
 
-RANGE_DICT = {
-    "linear_velocity": [-1, 2],
-    "angular_velocity": [-3.14, 3.14],
-}
-
 class MotionControlContinuous(DWABase):
-    def __init__(self, **kwargs):
+    def __init__(self, min_v=-1, max_v=2, min_w=-3.14, max_w=3.14, **kwargs):
         super().__init__(**kwargs)
         self._cmd_vel_pub = rospy.Publisher('/cmd_vel', Twist, queue_size=1)
         self.params = None
         # same as the parameters to tune
+        
+        self.RANGE_DICT = RANGE_DICT = {
+            "linear_velocity": [min_v, max_v],
+            "angular_velocity": [min_w, max_w],
+        }
         self.action_space = Box(
             low=np.array([RANGE_DICT["linear_velocity"][0], RANGE_DICT["angular_velocity"][0]]),
             high=np.array([RANGE_DICT["linear_velocity"][1], RANGE_DICT["angular_velocity"][1]]),

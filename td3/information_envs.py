@@ -5,7 +5,7 @@ import sys
 from os.path import dirname, abspath
 sys.path.append(dirname(dirname(abspath(__file__))))
 from envs.parameter_tuning_envs import RANGE_DICT as  PARAMS_RANGE_DICT
-from envs.motion_control_envs import RANGE_DICT as MOTION_RANGE_DICT
+# from envs.motion_control_envs import RANGE_DICT as MOTION_RANGE_DICT
 
 class InfoEnv:
     """ The infomation environment contains observation space and action space infomation only
@@ -21,8 +21,8 @@ class InfoEnv:
             )
         elif env_id.startswith("motion_control_continuous"):
             action_space = Box(
-                low=np.array([MOTION_RANGE_DICT["linear_velocity"][0], MOTION_RANGE_DICT["angular_velocity"][0]]),
-                high=np.array([MOTION_RANGE_DICT["linear_velocity"][1], MOTION_RANGE_DICT["angular_velocity"][1]]),
+                low=np.array([env_config["kwargs"]["min_v"], env_config["kwargs"]["max_v"]]),
+                high=np.array([env_config["kwargs"]["max_w"], env_config["kwargs"]["max_w"]]),
                 dtype=np.float32
             )
         else:
@@ -32,7 +32,7 @@ class InfoEnv:
             observation_space = Box(
                 low=0,
                 high=env_config["kwargs"]["laser_clip"],
-                shape=(env_config["stack_frame"], 721 + env_config["kwargs"]["local_progress_obs"] * 2),
+                shape=(env_config["stack_frame"], 721 + env_config["kwargs"]["local_progress_obs"] * 3),
                 dtype=np.float32
             )
         elif "costmap" in env_id:
