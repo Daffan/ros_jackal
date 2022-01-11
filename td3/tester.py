@@ -38,7 +38,7 @@ def main(args):
         env = ShapingRewardWrapper(env)
     env = StackFrame(env, stack_frame=env_config["stack_frame"]) 
 
-    policy, _ = initialize_policy(config, env)
+    policy, _ = initialize_policy(config, env, init_buffer=False)
     policy = load_policy(policy)
 
     print(">>>>>>>>>>>>>> Running on %s <<<<<<<<<<<<<<<<" %(world_name))
@@ -61,7 +61,7 @@ def main(args):
             _debug_print_robot_status(env, len(traj), rew, actions)
         
         time_per_step = info['time'] / len(traj)  # sometimes, the simulation runs very slow, need restart
-        if len(traj) > 1 and time_per_step < (0.1 + config["env_config"]["kwargs"]["time_step"]):
+        if len(traj) > 1 and time_per_step < (0.05 + config["env_config"]["kwargs"]["time_step"]):
             ep = write_buffer(traj, args.id)
         else:  # for some reason, the progress might just dead or always give fail traj with only 1 step
             bad_traj_count += 1

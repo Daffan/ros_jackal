@@ -60,8 +60,8 @@ class MotionControlContinuous(DWABase):
         self.gazebo_sim.unpause()
         self._cmd_vel_pub.publish(cmd_vel_value)
         self.move_base.make_plan()
-        rospy.sleep(self.time_step)
         self.gazebo_sim.pause()
+        super()._take_action(action)  # this will wait util next time step
 
 
 class MotionControlContinuousLaser(MotionControlContinuous, DWABaseLaser):

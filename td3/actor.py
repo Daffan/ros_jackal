@@ -122,11 +122,10 @@ def main(id):
             info["world"] = world_name
             traj.append([obs, actions, rew, done, info])
             obs = obs_new
-
             _debug_print_robot_status(env, len(traj), rew, actions)
         
         time_per_step = info['time'] / len(traj)  # sometimes, the simulation runs very slow, need restart
-        if len(traj) > 1 and time_per_step < (0.1 + config["env_config"]["kwargs"]["time_step"]):
+        if len(traj) > 1 and time_per_step < (0.05 + config["env_config"]["kwargs"]["time_step"]):
             _ = write_buffer(traj, id)
         else:  # for some reason, the progress might just dead or always give fail traj with only 1 step
             bad_traj_count += 1

@@ -116,7 +116,7 @@ class DWABase(gym.Env):
         # Resets the state of the environment and returns an initial observation
         self.gazebo_sim.reset()
         self._reset_move_base()
-        self.start_time = rospy.get_time()
+        self.start_time = self.time = rospy.get_time()
         self.traj_pos = []
         self.traj_ori = []
         self.collided = False
@@ -162,6 +162,10 @@ class DWABase(gym.Env):
         return obs, rew, done, info
 
     def _take_action(self, action):
+        current_time = rospy.get_time()
+        while current_time - self.time < self.time_step:
+            time.sleep(0.01)
+        self.time = current_time
         raise NotImplementedError()
 
     def _get_observation(self):
@@ -231,7 +235,7 @@ class DWABase(gym.Env):
         self.collision_count += self.collided
         return dict(
             world=self.world_name,
-            time=rospy.get_time() - self.start_time,
+            time=self.time - self.start_time,
             collision=self.collision_count,
             recovery=1.0 * bn / nn,
             smoothness=self.smoothness,
