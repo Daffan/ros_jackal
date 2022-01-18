@@ -122,7 +122,12 @@ class DWABase(gym.Env):
         
         pose = self.gazebo_sim.get_model_state().pose
         pos = pose.position
-        ori = pose.orientation.w
+        ori = pose.orientation
+        ori = np.arctan2(ori.z, ori.w) * 2
+        if ori < 0:
+            ori += 2 * np.pi
+        ori -= np.pi  # in range (-pi, +pi)
+        assert -np.pi <= ori <= np.pi
         self.traj_pos.append((pos))
         self.traj_ori.append(ori)
         
@@ -338,7 +343,7 @@ class DWABaseLaser(DWABase):
             else:
                 last_pos = self.traj_pos[-1]
             ori = self.traj_ori[-1]
-            local_progress = np.array([pos.y - last_pos.y, pos.y - 7.5, ori]) / np.array([0.5, 2.5, 3.14])
+            local_progress = np.array([pos.y - last_pos.y, pos.y - 7.5, ori]) / np.array([0.5, 2.5, np.pi])
             obs.append(local_progress)
         if self.last_step_action_obs:
             bias = (self.action_space.high + self.action_space.low) / 2.
