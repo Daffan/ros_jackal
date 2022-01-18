@@ -79,6 +79,11 @@ class CondorCollector(object):
             join(BUFFER_PATH, "policy_copy_noise"),
             join(BUFFER_PATH, "policy_noise")
         )
+        if os.path.exists(join(BUFFER_PATH, "policy_copy_model")):
+            shutil.move(
+                join(BUFFER_PATH, "policy_copy_model"),
+                join(BUFFER_PATH, "policy_model")
+            )
 
     def collect(self, n_step):
         """ This method searches the buffer folder and collect all the saved trajectories

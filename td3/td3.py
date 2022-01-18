@@ -70,12 +70,19 @@ class Model(nn.Module):
         self.head = head
         self.deterministic = deterministic
         self.history_length, self.state_dim = state_dim
+        self.laser_dim = 720
+        self.feature_dim = self.state_dim - self.laser_dim
         if not deterministic:
             self.state_dim *= 2  # mean and logvar
+            self.laser_dim *= 2
+            self.feature_dim *= 2
         
-        self.state_fc = nn.Sequential(*[
-            nn.Linear(head.feature_dim, self.state_dim),
+        self.laser_state_fc = nn.Sequential(*[
+            nn.Linear(head.feature_dim, self.laser_dim),
             nn.Tanh()
+        ])
+        self.feature_state_fc = nn.Sequential(*[
+            nn.Linear(head.feature_dim, self.feature_dim)
         ])
         
         # self.reward_fc = nn.Linear(head.feature_dim, 1)
@@ -85,10 +92,15 @@ class Model(nn.Module):
         s = self.state_preprocess(state) if self.state_preprocess else state
         sa = torch.cat([s, action], 1)
         x = self.head(sa)
-        s = self.state_fc(x)
+        ls = self.laser_state_fc(x)
+        fs = self.feature_state_fc(x)
         # We decide not to predict reward and termination for now
         # r = self.reward_fc(x)
         # d = F.sigmoid(self.done_fc(x))
+        if self.deterministic:
+            s = torch.cat([ls, fs], axis=1)
+        else:
+            s = torch.cat([ls[:, :self.laser_dim], fs[:, :self.feature_dim], ls[:, self.laser_dim:], fs[:, self.feature_dim:]])
 
         return s  #, r, d
     
@@ -492,7 +504,7 @@ class DynaTD3(TD3):
         super().save(dir, filename)
         self.model.to("cpu")
         with open(join(dir, filename + "_model"), "wb") as f:
-            pickle.dump(self.actor.state_dict(), f)
+            pickle.dump(self.model.state_dict(), f)
         self.model.to(self.device)
 
     def load(self, dir, filename):
@@ -596,7 +608,7 @@ class SMCPTD3(TD3):
         super().save(dir, filename)
         self.model.to("cpu")
         with open(join(dir, filename + "_model"), "wb") as f:
-            pickle.dump(self.actor.state_dict(), f)
+            pickle.dump(self.model.state_dict(), f)
         self.model.to(self.device)
 
     def load(self, dir, filename):

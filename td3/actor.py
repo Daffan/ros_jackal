@@ -53,6 +53,7 @@ def load_policy(policy):
                 policy.load(BUFFER_PATH, "policy")
             f = False
         except FileNotFoundError:
+            logging.exception('')
             time.sleep(1)
         except:
             logging.exception('')
