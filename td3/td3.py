@@ -445,8 +445,8 @@ class DynaTD3(TD3):
                 if i == 0:
                     action = next_action
                 next_state = self.model.sample(state, next_action)
-                reward = self._get_reward(state, next_state)
-                not_done *= (1 - self._get_done(next_state))
+                reward = self._get_reward(state, next_state)[:, None]
+                not_done *= (1 - self._get_done(next_state)[:, None])
                 gammas *= self.gamma ** (not_done)
                 reward = (reward - replay_buffer.mean) / replay_buffer.std  # reward normalization 
                 total_reward = reward + total_reward * gammas
@@ -455,16 +455,17 @@ class DynaTD3(TD3):
     
     def _get_reward(self, state, next_state):
         # This is a hard-coded reward function!!
-        rew = 0
-        rew += next_state[:, -1, -1:] * 2  # this is delta y
+        rew = next_state[:, -1, -5] / 2  # this is delta y
         d, _ = torch.sort(next_state[:, -1, :720] * 2 + 2, axis=-1)
-        d = d[:, :10].mean(axis=-1, keepdim=True)
-        rew += -0.01 / (d + 0.05)  # hard-coded collision coefficient!!
-        rew += self._get_done(next_state) * 20
+        d = d[:, :10].mean(axis=-1, keepdim=False)
+        rew += -torch.ones_like(d) * (d < 0.1)  # hard-coded collision coefficient!!
+        rew += (next_state[:, -1, -4] > 1).long() * 20
         return rew
 
     def _get_done(self, next_state):
-        return (next_state[:, -1, -1:] > 0.5).long() 
+        d, _ = torch.sort(next_state[:, -1, :720] * 2 + 2, axis=-1)
+        d = d[:, :10].mean(axis=-1, keepdim=False)
+        return torch.logical_or(next_state[:, -1, -4] > 1.4, d < 0.1).long()
 
     def train(self, replay_buffer, batch_size=256):
         rl_loss_info = super().train(replay_buffer, batch_size)
@@ -486,6 +487,18 @@ class DynaTD3(TD3):
         loss_info.update(simulated_rl_loss_info)
 
         return loss_info
+    
+    def save(self, dir, filename):
+        super().save(dir, filename)
+        self.model.to("cpu")
+        with open(join(dir, filename + "_model"), "wb") as f:
+            pickle.dump(self.actor.state_dict(), f)
+        self.model.to(self.device)
+
+    def load(self, dir, filename):
+        super().load(dir, filename)
+        with open(join(dir, filename + "_model"), "rb") as f:
+            self.model.load_state_dict(pickle.load(f))
 
 
 class SMCPTD3(TD3):
@@ -524,6 +537,16 @@ class SMCPTD3(TD3):
             "Model_loss": loss.item(),
             "Model_grad_norm": self.grad_norm(self.model)
         }
+        
+    def train(self, replay_buffer, batch_size=256):
+        rl_loss_info = super().train(replay_buffer, batch_size)
+        model_loss_info = self.train_model(replay_buffer, batch_size)
+        
+        loss_info = {}
+        loss_info.update(rl_loss_info)
+        loss_info.update(model_loss_info)
+
+        return loss_info
 
     def select_action(self, state):
         if self.exploration_noise > 0:
@@ -542,10 +565,9 @@ class SMCPTD3(TD3):
                         
                     # simulate trajectories
                     ns = self.model.sample(s, a)
-                    r += self._get_reward(s, ns) * gamma
-                    gamma *= (1 - self._get_done(ns))
+                    r += self._get_reward(s, ns)[:, None] * gamma
+                    gamma *= (1 - self._get_done(ns)[:, None])
                     s = ns
-
                 q = self.critic.Q1(ns, a)
                 r += q * gamma
                 
@@ -558,23 +580,38 @@ class SMCPTD3(TD3):
     
     def _get_reward(self, state, next_state):
         # This is a hard-coded reward function!!
-        rew = next_state[:, -1, -1:] * 2  # this is delta y
+        rew = next_state[:, -1, -5] / 2  # this is delta y
         d, _ = torch.sort(next_state[:, -1, :720] * 2 + 2, axis=-1)
-        d = d[:, :10].mean(axis=-1, keepdim=True)
-        rew += -0.01 / (d + 0.05)  # hard-coded collision coefficient!!
-        rew += self._get_done(next_state) * 20
+        d = d[:, :10].mean(axis=-1, keepdim=False)
+        rew += -torch.ones_like(d) * (d < 0.1)  # hard-coded collision coefficient!!
+        rew += (next_state[:, -1, -4] > 1).long() * 20
         return rew
 
     def _get_done(self, next_state):
-        return (next_state[:, -1, -1:] > 0.5).long()
+        d, _ = torch.sort(next_state[:, -1, :720] * 2 + 2, axis=-1)
+        d = d[:, :10].mean(axis=-1, keepdim=False)
+        return torch.logical_or(next_state[:, -1, -4] > 1.4, d < 0.1).long()
+    
+    def save(self, dir, filename):
+        super().save(dir, filename)
+        self.model.to("cpu")
+        with open(join(dir, filename + "_model"), "wb") as f:
+            pickle.dump(self.actor.state_dict(), f)
+        self.model.to(self.device)
+
+    def load(self, dir, filename):
+        super().load(dir, filename)
+        with open(join(dir, filename + "_model"), "rb") as f:
+            self.model.load_state_dict(pickle.load(f))
 
 
 class ReplayBuffer(object):
-    def __init__(self, state_dim, action_dim, max_size=int(1e6), device="cpu", safe_rl=False):
+    def __init__(self, state_dim, action_dim, max_size=int(1e6), device="cpu", safe_rl=False, reward_norm=False):
         self.max_size = max_size
         self.ptr = 0
         self.size = 0
         self.mean, self.std = 0.0, 1.0
+        self.reward_norm = reward_norm
 
         self.safe_rl = safe_rl
 
@@ -607,11 +644,12 @@ class ReplayBuffer(object):
         self.ptr = (self.ptr + 1) % self.max_size
         self.size = min(self.size + 1, self.max_size)
 
-        if self.ptr == 1000:  # and self.mean is None:
+        if self.ptr == 1000 and self.reward_norm:  # and self.mean is None:
             rew = self.reward[:1000]
             self.mean, self.std = rew.mean(), rew.std()
             if np.isclose(self.std, 0, 1e-2) or self.std is None:
                 self.mean, self.std = 0.0, 1.0
+        self.mean, self.std = 0.0, 1.0
 
     def sample(self, batch_size):
         ind = np.random.randint(0, self.size, size=batch_size)

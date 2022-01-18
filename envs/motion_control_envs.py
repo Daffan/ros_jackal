@@ -29,6 +29,7 @@ class MotionControlContinuous(DWABase):
         set_goal is replaced with make_plan
         """
         self.step_count = 0
+        self.action = np.zeros(self.action_space.shape)
         # Reset robot in odom frame clear_costmap
         self.gazebo_sim.unpause()
         self.move_base.reset_robot_in_odom()
@@ -36,9 +37,14 @@ class MotionControlContinuous(DWABase):
         self.gazebo_sim.reset()
         self.move_base.make_plan()
         self._clear_costmap()
-        self.start_time = rospy.get_time()
-        self.traj_pos = []
-        self.traj_ori = []
+        self.start_time = self.time = rospy.get_time()
+        
+        pose = self.gazebo_sim.get_model_state().pose
+        pos = pose.position
+        ori = pose.orientation.w
+        self.traj_pos.append((pos))
+        self.traj_ori.append(ori)
+        
         self.collided = False
         obs = self._get_observation()
         self.gazebo_sim.pause()
@@ -60,8 +66,8 @@ class MotionControlContinuous(DWABase):
         self.gazebo_sim.unpause()
         self._cmd_vel_pub.publish(cmd_vel_value)
         self.move_base.make_plan()
-        self.gazebo_sim.pause()
         super()._take_action(action)  # this will wait util next time step
+        self.gazebo_sim.pause()
 
 
 class MotionControlContinuousLaser(MotionControlContinuous, DWABaseLaser):

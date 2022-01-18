@@ -203,6 +203,8 @@ if __name__ == "__main__":
                 acc_mean_success.append(mean_success)
                 if mean_time > 0:
                     acc_mean_time.append(mean_time)
+                print("mean return: %.2f, success: %.2f, time: %.2f, support: %d" %(np.mean(acc_mean_return), np.mean(acc_mean_success), np.mean(acc_mean_time), len(acc_mean_return)))
+
                 continue
             tmp_jobs.append(j)
             tmp_ids.append(i)
@@ -213,7 +215,7 @@ if __name__ == "__main__":
         
     with open(join(model_dir, "test_results.pickle"), "wb") as f:
         pickle.dump(results, f)
-    print("mean return: %.2f, success: %.2f, time: %.2f" %(np.mean(acc_mean_return), np.mean(acc_mean_success), np.mean(acc_mean_time)))
+    print("mean return: %.2f, success: %.2f, time: %.2f, support: %d" %(np.mean(acc_mean_return), np.mean(acc_mean_success), np.mean(acc_mean_time), len(acc_mean_return)))
 
     shutil.rmtree(buffer_path, ignore_errors=True)
             

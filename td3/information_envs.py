@@ -32,7 +32,7 @@ class InfoEnv:
             observation_space = Box(
                 low=0,
                 high=env_config["kwargs"]["laser_clip"],
-                shape=(env_config["stack_frame"], 721 + env_config["kwargs"]["local_progress_obs"] * 3),
+                shape=(env_config["stack_frame"], 721 + env_config["kwargs"]["local_progress_obs"] * 3 + env_config["kwargs"]["last_step_action_obs"] * 2),
                 dtype=np.float32
             )
         elif "costmap" in env_id:

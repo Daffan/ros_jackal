@@ -25,6 +25,7 @@ class DWABase(gym.Env):
         max_step=100,
         time_step=1,
         local_progress_obs=False,
+        last_step_action_obs=False,
         slack_reward=-1,
         failure_reward=-50,
         success_reward=0,
@@ -46,6 +47,7 @@ class DWABase(gym.Env):
         self.verbose = verbose
         self.time_step = time_step
         self.local_progress_obs = local_progress_obs
+        self.last_step_action_obs = last_step_action_obs
         self.max_step = max_step
         self.slack_reward = slack_reward
         self.failure_reward = failure_reward
@@ -89,8 +91,8 @@ class DWABase(gym.Env):
         )
 
         self.step_count = 0
-        self.traj_pos = None
-        self.traj_ori = None
+        self.traj_pos = []
+        self.traj_ori = []
         self.collided = None
 
     def launch_move_base(self, goal_position, base_local_planner):
@@ -117,13 +119,19 @@ class DWABase(gym.Env):
         self.gazebo_sim.reset()
         self._reset_move_base()
         self.start_time = self.time = rospy.get_time()
-        self.traj_pos = []
-        self.traj_ori = []
+        
+        pose = self.gazebo_sim.get_model_state().pose
+        pos = pose.position
+        ori = pose.orientation.w
+        self.traj_pos.append((pos))
+        self.traj_ori.append(ori)
+        
         self.collided = False
         obs = self._get_observation()
         self.gazebo_sim.pause()
         self.collision_count = 0
         self.smoothness = 0
+        self.action = np.zeros(self.action_space.shape)
         return obs
 
     def _reset_move_base(self):
@@ -159,14 +167,15 @@ class DWABase(gym.Env):
         info = self._get_info()
         done = self._get_done()
         self.gazebo_sim.pause()
+        self.action = action
         return obs, rew, done, info
 
     def _take_action(self, action):
         current_time = rospy.get_time()
         while current_time - self.time < self.time_step:
             time.sleep(0.01)
+            current_time = rospy.get_time()
         self.time = current_time
-        raise NotImplementedError()
 
     def _get_observation(self):
         raise NotImplementedError()
@@ -291,7 +300,11 @@ class DWABaseLaser(DWABase):
         self.laser_clip = laser_clip
         
         # 720 laser scan + local goal (in angle)
-        obs_dim = 721 if not self.local_progress_obs else 724
+        obs_dim = 721 
+        if self.local_progress_obs:
+            obs_dim += 3
+        if self.last_step_action_obs:
+            obs_dim += 2  # this only works for motion control
         self.observation_space = Box(
             low=0,
             high=laser_clip,
@@ -319,15 +332,18 @@ class DWABaseLaser(DWABase):
         
         obs = [laser_scan, local_goal]
         if self.local_progress_obs:
+            pos = self.traj_pos[-1]
             if len(self.traj_pos) > 1:
-                pos = self.traj_pos[-1]
                 last_pos = self.traj_pos[-2]
-                ori = self.traj_ori[-1]
-                last_ori = self.traj_ori[-2]
-                local_progress = (np.array([pos.x, pos.y, ori]) - np.array([last_pos.x, last_pos.y, last_ori])) / 2.
             else:
-                local_progress = np.array([0, 0, 0])
-            obs += [local_progress]
+                last_pos = self.traj_pos[-1]
+            ori = self.traj_ori[-1]
+            local_progress = np.array([pos.y - last_pos.y, pos.y - 7.5, ori]) / np.array([0.5, 2.5, 3.14])
+            obs.append(local_progress)
+        if self.last_step_action_obs:
+            bias = (self.action_space.high + self.action_space.low) / 2.
+            scale = (self.action_space.high - self.action_space.low) / 2.
+            obs.append((self.action - bias) / scale)
 
         obs = np.concatenate(obs)
 

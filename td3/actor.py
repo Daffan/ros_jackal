@@ -124,15 +124,15 @@ def main(id):
             obs = obs_new
             _debug_print_robot_status(env, len(traj), rew, actions)
         
-        time_per_step = info['time'] / len(traj)  # sometimes, the simulation runs very slow, need restart
-        if len(traj) > 1 and time_per_step < (0.05 + config["env_config"]["kwargs"]["time_step"]):
-            _ = write_buffer(traj, id)
-        else:  # for some reason, the progress might just dead or always give fail traj with only 1 step
-            bad_traj_count += 1
-            if bad_traj_count >= 5:
-                break
+        # time_per_step = info['time'] / len(traj)  # sometimes, the simulation runs very slow, need restart
+        # if len(traj) > 1 and time_per_step < (0.05 + config["env_config"]["kwargs"]["time_step"]):
+        #     _ = write_buffer(traj, id)
+        # else:  # for some reason, the progress might just dead or always give fail traj with only 1 step
+        #     bad_traj_count += 1
+        #     if bad_traj_count >= 5:
+        #         break
         
-        # write_buffer(traj, id)
+        write_buffer(traj, id)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description = 'start an actor')

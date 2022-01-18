@@ -222,8 +222,13 @@ def initialize_policy(config, env, init_buffer=True):
             **training_config["policy_args"]
         )
     if init_buffer:
+        try:
+            config['env_config']["reward_norm"]
+        except KeyError:
+            config['env_config']["reward_norm"] = False
         buffer = ReplayBuffer(state_dim, action_dim, training_config['buffer_size'],
-                            device=device, safe_rl=config['env_config']["safe_rl"])
+                            device=device, safe_rl=config['env_config']["safe_rl"],
+                            reward_norm=config['env_config']["reward_norm"])
     else:
         buffer = None
 
@@ -294,6 +299,13 @@ def train(env, policy, buffer, config):
                 writer.add_scalar('train/' + k, log[k], global_step=n_steps)
             policy.save(save_path, "policy")
             print("Logging to %s" %save_path)
+            if config["training_config"]["MPC"] or config["training_config"]["dyna_style"]:
+                if n_steps > 200000 and not exists(join(save_path, "policy_200k_actor")):
+                    policy.save(save_path, "policy_200k")
+                if n_steps > 1000000 and not exists(join(save_path, "policy_1M_actor")):
+                    policy.save(save_path, "policy_1M")
+                if n_steps > 4000000 and not exists(join(save_path, "policy_4M_actor")):
+                    policy.save(save_path, "policy_4M")  
 
             for k in world_ep_buf.keys():
                 writer.add_scalar(k + "/Episode_return", np.mean([epinfo["ep_rew"] for epinfo in world_ep_buf[k]]), global_step=n_steps)
@@ -310,6 +322,7 @@ def train(env, policy, buffer, config):
         train_envs.close()
 
 if __name__ == "__main__":
+    torch.set_num_threads(8)
     parser = argparse.ArgumentParser(description = 'Start condor training')
     parser.add_argument('--config_path', dest='config_path', default="../configs/config.ymal")
     logging.getLogger().setLevel("INFO")

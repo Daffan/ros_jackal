@@ -61,7 +61,7 @@ def main(args):
             _debug_print_robot_status(env, len(traj), rew, actions)
         
         time_per_step = info['time'] / len(traj)  # sometimes, the simulation runs very slow, need restart
-        if len(traj) > 1 and time_per_step < (0.05 + config["env_config"]["kwargs"]["time_step"]):
+        if len(traj) >= 1 and time_per_step < (0.05 + config["env_config"]["kwargs"]["time_step"]):
             ep = write_buffer(traj, args.id)
         else:  # for some reason, the progress might just dead or always give fail traj with only 1 step
             bad_traj_count += 1
