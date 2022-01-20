@@ -221,8 +221,7 @@ class DWABase(gym.Env):
         if not self.safe_rl:
             rew += self.c_rew
             
-        if self.local_goal_reward:
-            rew += (1 - self.dist_last_lg)
+        rew += (1 - self.dist_last_lg) * self.local_goal_reward
         return rew
 
     def _compute_angle(self, idx):
