@@ -31,6 +31,7 @@ class DWABase(gym.Env):
         success_reward=0,
         collision_reward=0,
         smoothness_reward=0,
+        local_goal_reward=0,
         max_collision=10000,
         safe_rl=False,
         verbose=True
@@ -54,6 +55,7 @@ class DWABase(gym.Env):
         self.success_reward = success_reward
         self.collision_reward = collision_reward
         self.smoothness_reward = smoothness_reward
+        self.local_goal_reward = local_goal_reward
         self.max_collision = max_collision
 
         # for safety learning, separate collision penalty from reward
@@ -93,6 +95,7 @@ class DWABase(gym.Env):
         self.step_count = 0
         self.traj_pos = []
         self.traj_ori = []
+        self.traj_local_goal = []
         self.collided = None
 
     def launch_move_base(self, goal_position, base_local_planner):
@@ -120,16 +123,12 @@ class DWABase(gym.Env):
         self._reset_move_base()
         self.start_time = self.time = rospy.get_time()
         
-        pose = self.gazebo_sim.get_model_state().pose
-        pos = pose.position
-        ori = pose.orientation
-        ori = np.arctan2(ori.z, ori.w) * 2
-        if ori < 0:
-            ori += 2 * np.pi
-        ori -= np.pi  # in range (-pi, +pi)
-        assert -np.pi <= ori <= np.pi
+        pos, ori = self._get_pos_ori()
         self.traj_pos.append((pos))
         self.traj_ori.append(ori)
+        
+        lg, self.dist_last_lg = self._get_local_goal()
+        self.traj_local_goal.append(lg)
         
         self.collided = False
         obs = self._get_observation()
@@ -160,11 +159,12 @@ class DWABase(gym.Env):
         self._take_action(action)
         self.step_count += 1
         
-        pose = self.gazebo_sim.get_model_state().pose
-        pos = pose.position
-        ori = pose.orientation.w
+        pos, ori = self._get_pos_ori()
         self.traj_pos.append((pos))
         self.traj_ori.append(ori)
+        
+        local_goal, self.dist_last_lg = self._get_local_goal()
+        self.traj_local_goal.append(local_goal)
         
         self.gazebo_sim.unpause()
         obs = self._get_observation()
@@ -220,6 +220,9 @@ class DWABase(gym.Env):
 
         if not self.safe_rl:
             rew += self.c_rew
+            
+        if self.local_goal_reward:
+            rew += (1 - self.dist_last_lg)
         return rew
 
     def _compute_angle(self, idx):
@@ -243,6 +246,17 @@ class DWABase(gym.Env):
     def _get_flip_status(self):
         robot_position = self.traj_pos[-1]
         return robot_position.z > 0.1
+    
+    def _get_pos_ori(self):
+        pose = self.gazebo_sim.get_model_state().pose
+        pos = pose.position
+        ori = pose.orientation
+        ori = np.arctan2(ori.z, ori.w) * 2
+        if ori < 0:
+            ori += 2 * np.pi
+        ori -= np.pi  # in range (-pi, +pi)
+        assert -np.pi <= ori <= np.pi
+        return pos, ori
 
     def _get_info(self):
         bn, nn = self.move_base.get_bad_vel_num()
@@ -261,9 +275,9 @@ class DWABase(gym.Env):
         Returns:
             float: local goal in angle
         """
-        local_goal = self.move_base.get_local_goal()
+        local_goal, dist_last_lg = self.move_base.get_local_goal()
         local_goal = np.array([np.arctan2(local_goal.position.y, local_goal.position.x)])
-        return local_goal
+        return local_goal, dist_last_lg
 
     def close(self):
         # These will make sure all the ros processes being killed
@@ -330,7 +344,7 @@ class DWABaseLaser(DWABase):
     def _get_observation(self):
         # observation is the 720 dim laser scan + one local goal in angle
         laser_scan = self._get_laser_scan()
-        local_goal = self._get_local_goal()
+        local_goal = self.traj_local_goal[-1] # self._get_local_goal()
         
         laser_scan = (laser_scan - self.laser_clip/2.) / self.laser_clip * 2 # scale to (-1, 1)
         local_goal = local_goal / (np.pi) # scale to (-1, 1)

@@ -20,6 +20,7 @@ env_config:
     collision_reward: -1
     failure_reward: 0
     success_reward: 20
+    local_goal_reward: 1
     max_collision: 1
     init_position: [-2, 2, 1.57]
     goal_position: [0, 10, 0]
@@ -31,7 +32,7 @@ env_config:
 training_config:
   algorithm: "TD3"
   network: "mlp"
-  encoder: "transformer"
+  encoder: "mlp"
   buffer_size: 200000
   actor_lr: 0.00001
   critic_lr: 0.00002

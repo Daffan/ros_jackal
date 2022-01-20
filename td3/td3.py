@@ -432,10 +432,12 @@ class DynaTD3(TD3):
             recon_dist = Normal(mean, torch.exp(logvar))
             state_loss = -recon_dist.log_prob(next_state).sum(dim=-1).mean()  # nll loss
         
-        # reward_loss = self.loss_function(pred_reward, reward)
-        # done_loss = self.loss_function(pred_done, done)
+        pred_reward = self._get_reward(state, pred_next_state[:, None, :])
+        pred_done = self._get_done(pred_next_state[:, None, :])
+        reward_loss = self.loss_function(pred_reward, reward.view(-1))
+        done_loss = self.loss_function(pred_done, done.view(-1))
 
-        loss = state_loss # + reward_loss + done_loss
+        loss = state_loss + reward_loss + done_loss
 
         self.model_optimizer.zero_grad()
         loss.backward()
@@ -470,14 +472,14 @@ class DynaTD3(TD3):
         rew = next_state[:, -1, -5] / 2  # this is delta y
         d, _ = torch.sort(next_state[:, -1, :720] * 2 + 2, axis=-1)
         d = d[:, :10].mean(axis=-1, keepdim=False)
-        rew += -torch.ones_like(d) * (d < 0.1)  # hard-coded collision coefficient!!
+        rew += -torch.ones_like(d) * (d < 0.3)  # hard-coded collision coefficient!!
         rew += (next_state[:, -1, -4] > 1).long() * 20
         return rew
 
     def _get_done(self, next_state):
         d, _ = torch.sort(next_state[:, -1, :720] * 2 + 2, axis=-1)
         d = d[:, :10].mean(axis=-1, keepdim=False)
-        return torch.logical_or(next_state[:, -1, -4] > 1.4, d < 0.1).long()
+        return torch.logical_or(next_state[:, -1, -4] > 1.4, d < 0.3).long()
 
     def train(self, replay_buffer, batch_size=256):
         rl_loss_info = super().train(replay_buffer, batch_size)
@@ -529,7 +531,7 @@ class SMCPTD3(TD3):
         done = 1 - not_done
         if self.model.deterministic:
             pred_next_state = self.model(state, action)
-            state_loss = self.loss_function(pred_next_state, next_state)
+            state_loss = self.loss_function(pred_next_state, next_state[:, -1, :])
         else:
             out = self.model(state, action)
             mean = out[..., self.model.state_dim // 2:]
@@ -537,10 +539,12 @@ class SMCPTD3(TD3):
             recon_dist = Normal(mean, torch.exp(logvar))
             state_loss = -recon_dist.log_prob(next_state).sum(dim=-1).mean()  # nll loss
         
-        # reward_loss = self.loss_function(pred_reward, reward)
-        # done_loss = self.loss_function(pred_done, done)
+        pred_reward = self._get_reward(state, pred_next_state[:, None, :])
+        pred_done = self._get_done(pred_next_state[:, None, :])
+        reward_loss = self.loss_function(pred_reward, reward.view(-1))
+        done_loss = self.loss_function(pred_done, done.view(-1))
 
-        loss = state_loss # + reward_loss + done_loss
+        loss = state_loss + reward_loss + done_loss
 
         self.model_optimizer.zero_grad()
         loss.backward()
@@ -586,7 +590,7 @@ class SMCPTD3(TD3):
                 logit_r = F.softmax(r, -1).view(-1)
                 n = Categorical(logit_r).sample()
                 a = a0[n]
-            return a
+            return a.cpu().data.numpy()
         else: # deploy the policy only when self.exploration_noise = 0 
             return super().select_action(state)
     

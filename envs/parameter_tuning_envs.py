@@ -63,8 +63,8 @@ class DWAParamContinuous(DWABase):
             self.move_base.set_navi_param(param_name, param_value)
         # Wait for robot to navigate for one time step
         # rospy.sleep(self.time_step)
-        self.gazebo_sim.pause()
         super()._take_action(action)
+        self.gazebo_sim.pause()
 
 
 class DWAParamContinuousLaser(DWAParamContinuous, DWABaseLaser):

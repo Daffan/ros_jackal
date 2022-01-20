@@ -66,6 +66,7 @@ class Robot_config():
         self.vel_counter = 1  # avoid divided by zero error
         self.collision_count = 0
         self.qt = (0, 0, 0, 0)
+        self.last_lg = (self.X, self.Y)
 
     def get_robot_status(self, msg):
         q1 = msg.pose.pose.orientation.x
@@ -284,6 +285,9 @@ class MoveBase():
         Y = self.robot_config.Y
         PSI = self.robot_config.PSI
         los = self.robot_config.los
+        
+        lg_x, lg_y = self.robot_config.last_lg
+        dist_last_lg = (X - lg_x) ** 2 + (Y - lg_y) ** 2
 
         lg_x = 0
         lg_y = 0
@@ -295,11 +299,13 @@ class MoveBase():
                 dist = np.sqrt(dist)
                 if dist > los:
                     lg_flag = 1
+                    self.robot_config.last_lg = wp
                     lg = transform_lg(wp, X, Y, PSI)
                     lg_x = lg[0]
                     lg_y = lg[1]
                     break
             if lg_flag == 0:
+                self.robot_config.last_lg = gp[-1]
                 lg = transform_lg(gp[-1], X, Y, PSI)
                 lg_x = lg[0]
                 lg_y = lg[1]
@@ -308,7 +314,7 @@ class MoveBase():
         local_goal.position.x = lg_x
         local_goal.position.y = lg_y
         local_goal.orientation.w = 1
-        return local_goal
+        return local_goal, dist_last_lg
 
     def get_global_path(self):
         gp = self.robot_config.global_path
