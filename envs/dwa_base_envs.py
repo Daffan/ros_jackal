@@ -359,7 +359,7 @@ class DWABaseLaser(DWABase):
         
         laser_scan = (laser_scan - self.laser_clip/2.) / self.laser_clip * 2 # scale to (-1, 1)
         # local_goal = local_goal / (np.pi) # scale to (-1, 1)
-        final_goal = np.array([final_goal.x, final_goal.y]) / 5. -1  # roughly (-1,1)
+        final_goal = np.array([final_goal.position.x, final_goal.position.y]) / 5. -1  # roughly (-1,1)
         
         obs = [laser_scan, final_goal]
         if self.local_progress_obs:

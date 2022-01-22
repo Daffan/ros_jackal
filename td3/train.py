@@ -243,7 +243,7 @@ def train(env, policy, buffer, config):
     save_path, writer = initialize_logging(config)
     
     if env_config["use_condor"]:
-        collector = CondorCollector(policy, env, buffer)
+        collector = CondorCollector(policy, env, buffer, config)
     else:
         collector = LocalCollector(policy, env, buffer)
 

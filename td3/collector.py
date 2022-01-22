@@ -22,13 +22,13 @@ class LocalCollector(object):
         
 
 class CondorCollector(object):
-    def __init__(self, policy, env, replaybuffer):
+    def __init__(self, policy, env, replaybuffer, config):
         '''
         it's a fake tianshou Collector object with the same api
         '''
         super().__init__()
         self.policy = policy
-        self.num_actor = env.config['condor_config']['num_actor']
+        self.num_actor = config['condor_config']['num_actor']
         self.ids = list(range(self.num_actor))
         self.ep_count = [0]*self.num_actor
         self.buffer = replaybuffer
@@ -39,7 +39,7 @@ class CondorCollector(object):
         self.update_policy()
         # save the env config the actor should read from
         shutil.copyfile(
-            env.config["env_config"]["config_path"],
+            config["env_config"]["config_path"],
             join(BUFFER_PATH, "config.yaml")
         )
 
