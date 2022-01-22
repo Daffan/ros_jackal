@@ -139,7 +139,7 @@ class DWABase(gym.Env):
         
         self.collided = False
         obs = self._get_observation()
-        self.last_final_goal = obs[721:723]
+        self.last_final_goal = obs[720:722]
         self.gazebo_sim.pause()
         self.collision_count = 0
         self.smoothness = 0
@@ -230,8 +230,8 @@ class DWABase(gym.Env):
             rew += self.c_rew
             
         # rew += (1 - self.dist_last_lg) * self.local_goal_reward
-        final_goal = obs[721:723]
-        rew += (np.linalg.norm(self.last_final_goal) - np.linalg.norm(final_goal)) * 5
+        final_goal = obs[720:722]
+        rew += (np.linalg.norm(self.last_final_goal + 1) - np.linalg.norm(final_goal + 1)) * 5
         self.last_final_goal = final_goal
         return rew
 

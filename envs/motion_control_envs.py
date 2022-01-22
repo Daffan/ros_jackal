@@ -50,8 +50,7 @@ class MotionControlContinuous(DWABase):
         
         self.collided = False
         obs = self._get_observation()
-        obs = self._get_observation()
-        self.last_final_goal = obs[721:723]
+        self.last_final_goal = obs[720:722]
         self.gazebo_sim.pause()
         self.collision_count = 0
         self.smoothness = 0
