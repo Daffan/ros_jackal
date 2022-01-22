@@ -74,17 +74,19 @@ def initialize_logging(config):
 def initialize_envs(config):
     env_config = config["env_config"]
     env_config["kwargs"]["safe_rl"] = env_config["safe_rl"]
+    if env_config["use_condor"]:
+        env_config["kwargs"]["init_sim"] = False
     
-    if not env_config["use_condor"]:
-        env = gym.make(env_config["env_id"], **env_config["kwargs"])
-        if env_config["shaping_reward"]:
-            env = ShapingRewardWrapper(env)
-        env = StackFrame(env, stack_frame=env_config["stack_frame"])
-    else:
+    # if not env_config["use_condor"]:
+    env = gym.make(env_config["env_id"], **env_config["kwargs"])
+    if env_config["shaping_reward"]:
+        env = ShapingRewardWrapper(env)
+    env = StackFrame(env, stack_frame=env_config["stack_frame"])
+    # else:
         # If use condor, we want to avoid initializing env instance from the central learner
         # So here we use a fake env with obs_space and act_space information
-        print("    >>>> Using actors on Condor")
-        env = InfoEnv(config)
+    #    print("    >>>> Using actors on Condor")
+    #    env = InfoEnv(config)
     return env
 
 def seed(config):

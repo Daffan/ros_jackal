@@ -45,8 +45,8 @@ class MotionControlContinuous(DWABase):
         self.traj_pos.append((pos))
         self.traj_ori.append(ori)
         
-        lg, self.dist_last_lg = self._get_local_goal()
-        self.traj_local_goal.append(lg)
+        # lg, self.dist_last_lg = self._get_local_goal()
+        # self.traj_local_goal.append(lg)
         
         self.collided = False
         obs = self._get_observation()

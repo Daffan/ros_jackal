@@ -34,7 +34,8 @@ class DWABase(gym.Env):
         local_goal_reward=0,
         max_collision=10000,
         safe_rl=False,
-        verbose=True
+        verbose=True,
+        init_sim=True
     ):
         """Base RL env that initialize jackal simulation in Gazebo
         """
@@ -62,27 +63,29 @@ class DWABase(gym.Env):
         self.safe_rl = safe_rl
 
         # launch gazebo and dwa demo
-        rospy.logwarn(">>>>>>>>>>>>>>>>>> Load world: %s <<<<<<<<<<<<<<<<<<" %(world_name))
-        rospack = rospkg.RosPack()
-        self.BASE_PATH = rospack.get_path('jackal_helper')
-        world_name = join(self.BASE_PATH, "worlds", world_name)
-        launch_file = join(self.BASE_PATH, 'launch', 'gazebo_launch.launch')
+        if init_sim:
+            rospy.logwarn(">>>>>>>>>>>>>>>>>> Load world: %s <<<<<<<<<<<<<<<<<<" %(world_name))
+            rospack = rospkg.RosPack()
+            self.BASE_PATH = rospack.get_path('jackal_helper')
+            world_name = join(self.BASE_PATH, "worlds", world_name)
+            launch_file = join(self.BASE_PATH, 'launch', 'gazebo_launch.launch')
 
-        self.gazebo_process = subprocess.Popen(['roslaunch', 
-                                                launch_file,
-                                                'world_name:=' + world_name,
-                                                'gui:=' + ("true" if gui else "false"),
-                                                'verbose:=' + ("true" if verbose else "false"),
-                                                ])
-        time.sleep(10)  # sleep to wait until the gazebo being created
+            self.gazebo_process = subprocess.Popen(['roslaunch', 
+                                                    launch_file,
+                                                    'world_name:=' + world_name,
+                                                    'gui:=' + ("true" if gui else "false"),
+                                                    'verbose:=' + ("true" if verbose else "false"),
+                                                    ])
+            time.sleep(10)  # sleep to wait until the gazebo being created
 
-        # initialize the node for gym env
-        rospy.init_node('gym', anonymous=True, log_level=rospy.FATAL)
-        rospy.set_param('/use_sim_time', True)
+            # initialize the node for gym env
+            rospy.init_node('gym', anonymous=True, log_level=rospy.FATAL)
+            rospy.set_param('/use_sim_time', True)
 
-        self._set_start_goal_BARN(self.world_name)  # overwrite the starting goal if use BARN dataset
-        self.gazebo_sim = GazeboSimulation(init_position=self.init_position)
-        self.move_base = self.launch_move_base(goal_position=self.goal_position, base_local_planner=self.base_local_planner)
+            self._set_start_goal_BARN(self.world_name)  # overwrite the starting goal if use BARN dataset
+            
+            self.gazebo_sim = GazeboSimulation(init_position=self.init_position)
+            self.move_base = self.launch_move_base(goal_position=self.goal_position, base_local_planner=self.base_local_planner)
 
         # Not implemented
         self.action_space = None
@@ -90,6 +93,10 @@ class DWABase(gym.Env):
         self.reward_range = (
             min(slack_reward, failure_reward), 
             success_reward
+        )
+        self.world_frame_goal = (
+            self.init_position[0] + self.goal_position[0],
+            self.init_position[1] + self.goal_position[1],
         )
 
         self.step_count = 0
@@ -127,11 +134,12 @@ class DWABase(gym.Env):
         self.traj_pos.append((pos))
         self.traj_ori.append(ori)
         
-        lg, self.dist_last_lg = self._get_local_goal()
-        self.traj_local_goal.append(lg)
+        # lg, self.dist_last_lg = self._get_local_goal()
+        # self.traj_local_goal.append(lg)
         
         self.collided = False
         obs = self._get_observation()
+        self.last_final_goal = obs[721:723]
         self.gazebo_sim.pause()
         self.collision_count = 0
         self.smoothness = 0
@@ -164,12 +172,12 @@ class DWABase(gym.Env):
         self.traj_pos.append((pos))
         self.traj_ori.append(ori)
         
-        local_goal, self.dist_last_lg = self._get_local_goal()
-        self.traj_local_goal.append(local_goal)
+        # local_goal, self.dist_last_lg = self._get_local_goal()
+        # self.traj_local_goal.append(local_goal)
         
         self.gazebo_sim.unpause()
         obs = self._get_observation()
-        rew = self._get_reward()
+        rew = self._get_reward(obs)
         info = self._get_info()
         done = self._get_done()
         self.gazebo_sim.pause()
@@ -197,7 +205,7 @@ class DWABase(gym.Env):
             self.goal_distance = np.sqrt(np.sum((robot_position - goal_position) ** 2))
             return self.goal_distance < 0.4
 
-    def _get_reward(self):
+    def _get_reward(self, obs):
         rew = self.slack_reward
         if self.step_count >= self.max_step:  # or self._get_flip_status():
             rew += self.failure_reward
@@ -221,7 +229,10 @@ class DWABase(gym.Env):
         if not self.safe_rl:
             rew += self.c_rew
             
-        rew += (1 - self.dist_last_lg) * self.local_goal_reward
+        # rew += (1 - self.dist_last_lg) * self.local_goal_reward
+        final_goal = obs[721:723]
+        rew += (np.linalg.norm(self.last_final_goal) - np.linalg.norm(final_goal)) * 5
+        self.last_final_goal = final_goal
         return rew
 
     def _compute_angle(self, idx):
@@ -318,7 +329,7 @@ class DWABaseLaser(DWABase):
         self.laser_clip = laser_clip
         
         # 720 laser scan + local goal (in angle)
-        obs_dim = 721 
+        obs_dim = 722
         if self.local_progress_obs:
             obs_dim += 3
         if self.last_step_action_obs:
@@ -343,12 +354,14 @@ class DWABaseLaser(DWABase):
     def _get_observation(self):
         # observation is the 720 dim laser scan + one local goal in angle
         laser_scan = self._get_laser_scan()
-        local_goal = self.traj_local_goal[-1] # self._get_local_goal()
+        # local_goal = self.traj_local_goal[-1] # self._get_local_goal()
+        final_goal = self.move_base.get_final_goal()
         
         laser_scan = (laser_scan - self.laser_clip/2.) / self.laser_clip * 2 # scale to (-1, 1)
-        local_goal = local_goal / (np.pi) # scale to (-1, 1)
+        # local_goal = local_goal / (np.pi) # scale to (-1, 1)
+        final_goal = np.array([final_goal.x, final_goal.y]) / 5. -1  # roughly (-1,1)
         
-        obs = [laser_scan, local_goal]
+        obs = [laser_scan, final_goal]
         if self.local_progress_obs:
             pos = self.traj_pos[-1]
             if len(self.traj_pos) > 1:

@@ -315,6 +315,28 @@ class MoveBase():
         local_goal.position.y = lg_y
         local_goal.orientation.w = 1
         return local_goal, dist_last_lg
+    
+    def get_final_goal(self):
+        """Get the local goal coordinate relative to the robot's current location
+
+        Returns:
+            [Pose msg]: pose msg with attributes x, y, and orientaton
+        """
+        gp = self.robot_config.global_path
+        X = self.robot_config.X
+        Y = self.robot_config.Y
+        PSI = self.robot_config.PSI
+
+        self.robot_config.last_lg = gp[-1]
+        lg = transform_lg(gp[-1], X, Y, PSI)
+        lg_x = lg[0]
+        lg_y = lg[1]
+
+        final_goal = Pose()
+        final_goal.position.x = lg_x
+        final_goal.position.y = lg_y
+        final_goal.orientation.w = 1
+        return final_goal
 
     def get_global_path(self):
         gp = self.robot_config.global_path
