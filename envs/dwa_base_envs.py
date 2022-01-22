@@ -156,6 +156,7 @@ class DWABase(gym.Env):
     def step(self, action):
         """take an action and step the environment
         """
+        self.action = action
         self._take_action(action)
         self.step_count += 1
         
@@ -172,7 +173,6 @@ class DWABase(gym.Env):
         info = self._get_info()
         done = self._get_done()
         self.gazebo_sim.pause()
-        self.action = action
         return obs, rew, done, info
 
     def _take_action(self, action):

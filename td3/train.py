@@ -129,7 +129,7 @@ def initialize_policy(config, env, init_buffer=True):
     actor = Actor(
         #state_preprocess=state_preprocess,
         state_preprocess=get_encoder(encoder_type, encoder_args),
-        head=MLP(input_dim, 2, training_config['hidden_layer_size']),
+        head=MLP(input_dim, training_config['encoder_num_layers'], training_config['encoder_hidden_layer_size']),
         #head=nn.Identity(),
         action_dim=action_dim
     ).to(device)
@@ -146,7 +146,7 @@ def initialize_policy(config, env, init_buffer=True):
     input_dim += np.prod(action_dim)
     critic = Critic(
         state_preprocess=get_encoder(encoder_type, encoder_args),
-        head=MLP(input_dim, 2, training_config['hidden_layer_size']),
+        head=MLP(input_dim, training_config['encoder_num_layers'], training_config['encoder_hidden_layer_size']),
         #head=nn.Identity(),
     ).to(device)
     critic_optim = torch.optim.Adam(
@@ -156,7 +156,7 @@ def initialize_policy(config, env, init_buffer=True):
     if training_config["dyna_style"]:
         model = Model(
             state_preprocess=get_encoder(encoder_type, encoder_args),
-            head=MLP(input_dim, 2, training_config['hidden_layer_size']),
+            head=MLP(input_dim, training_config['encoder_num_layers'], training_config['encoder_hidden_layer_size']),
             state_dim=state_dim,
             deterministic=training_config['deterministic']
         ).to(device)
@@ -176,7 +176,7 @@ def initialize_policy(config, env, init_buffer=True):
     elif training_config["MPC"]:
         model = Model(
             state_preprocess=get_encoder(encoder_type, encoder_args),
-            head=MLP(input_dim, 2, training_config['hidden_layer_size']),
+            head=MLP(input_dim, training_config['encoder_num_layers'], training_config['encoder_hidden_layer_size']),
             state_dim=state_dim,
             deterministic=training_config['deterministic']
         ).to(device)
@@ -197,7 +197,7 @@ def initialize_policy(config, env, init_buffer=True):
     elif config['env_config']["safe_rl"]:
         safe_critic = Critic(
             state_preprocess=get_encoder(encoder_type, encoder_args),
-            head=MLP(input_dim, training_config['num_layers'], training_config['hidden_layer_size'])
+            head=MLP(input_dim, training_config['encoder_num_layers'], training_config['encoder_hidden_layer_size']),
         ).to(device)
         safe_critic_optim = torch.optim.Adam(
             critic.parameters(), 

@@ -85,8 +85,8 @@ class Model(nn.Module):
             nn.Linear(head.feature_dim, self.feature_dim)
         ])
         
-        # self.reward_fc = nn.Linear(head.feature_dim, 1)
-        # self.done_fc = nn.Linear(head.feature_dim, 1)
+        self.reward_fc = nn.Linear(head.feature_dim, 1)
+        self.done_fc = nn.Linear(head.feature_dim, 1)
 
     def forward(self, state, action):
         s = self.state_preprocess(state) if self.state_preprocess else state
@@ -95,22 +95,22 @@ class Model(nn.Module):
         ls = self.laser_state_fc(x)
         fs = self.feature_state_fc(x)
         # We decide not to predict reward and termination for now
-        # r = self.reward_fc(x)
-        # d = F.sigmoid(self.done_fc(x))
+        r = self.reward_fc(x)
+        d = F.sigmoid(self.done_fc(x))
         if self.deterministic:
             s = torch.cat([ls, fs], axis=1)
         else:
             s = torch.cat([ls[:, :self.laser_dim], fs[:, :self.feature_dim], ls[:, self.laser_dim:], fs[:, self.feature_dim:]])
 
-        return s  #, r, d
+        return s, r, d
     
     def sample(self, state, action):
-        s = self.forward(state, action)
+        s, r, d = self.forward(state, action)
         if self.deterministic:
             if self.history_length > 1:
                 return torch.cat([state[:, 1:, :], s[:, None, :]], axis=1)
             else:
-                return s[:, None, :]
+                return s[:, None, :], r, d
         else:
             out = self.model(state, action)
             mean = out[..., self.model.state_dim // 2:]
@@ -423,7 +423,7 @@ class DynaTD3(TD3):
         action /= self._action_scale
         done = 1 - not_done
         if self.model.deterministic:
-            pred_next_state = self.model(state, action)
+            pred_next_state, r, d = self.model(state, action)
             state_loss = self.loss_function(pred_next_state, next_state[:, -1, :])
         else:
             out = self.model(state, action)
@@ -432,10 +432,11 @@ class DynaTD3(TD3):
             recon_dist = Normal(mean, torch.exp(logvar))
             state_loss = -recon_dist.log_prob(next_state).sum(dim=-1).mean()  # nll loss
         
-        pred_reward = self._get_reward(state, pred_next_state[:, None, :])
-        pred_done = self._get_done(pred_next_state[:, None, :])
-        reward_loss = self.loss_function(pred_reward, reward.view(-1))
-        done_loss = self.loss_function(pred_done, done.view(-1))
+        # pred_reward = self._get_reward(state, pred_next_state[:, None, :])
+        # pred_done = self._get_done(pred_next_state[:, None, :])
+        reward_loss = self.loss_function(r, reward)
+        # done_loss = self.loss_function(d, done.view(-1))
+        done_loss = F.binary_cross_entropy(d, done)
 
         loss = state_loss + reward_loss + done_loss
 
@@ -458,9 +459,9 @@ class DynaTD3(TD3):
                 next_action += torch.randn_like(next_action, dtype=torch.float32) * self.exploration_noise  # exploration noise
                 if i == 0:
                     action = next_action
-                next_state = self.model.sample(state, next_action)
-                reward = self._get_reward(state, next_state)[:, None]
-                not_done *= (1 - self._get_done(next_state)[:, None])
+                next_state, r, d = self.model.sample(state, next_action)
+                reward = r # self._get_reward(state, next_state)[:, None]
+                not_done *= (1 - d) # (1 - self._get_done(next_state)[:, None])
                 gammas *= self.gamma ** (not_done)
                 reward = (reward - replay_buffer.mean) / replay_buffer.std  # reward normalization 
                 total_reward = reward + total_reward * gammas
@@ -530,7 +531,7 @@ class SMCPTD3(TD3):
         action /= self._action_scale
         done = 1 - not_done
         if self.model.deterministic:
-            pred_next_state = self.model(state, action)
+            pred_next_state, r, d = self.model(state, action)
             state_loss = self.loss_function(pred_next_state, next_state[:, -1, :])
         else:
             out = self.model(state, action)
@@ -539,10 +540,11 @@ class SMCPTD3(TD3):
             recon_dist = Normal(mean, torch.exp(logvar))
             state_loss = -recon_dist.log_prob(next_state).sum(dim=-1).mean()  # nll loss
         
-        pred_reward = self._get_reward(state, pred_next_state[:, None, :])
-        pred_done = self._get_done(pred_next_state[:, None, :])
-        reward_loss = self.loss_function(pred_reward, reward.view(-1))
-        done_loss = self.loss_function(pred_done, done.view(-1))
+        # pred_reward = self._get_reward(state, pred_next_state[:, None, :])
+        # pred_done = self._get_done(pred_next_state[:, None, :])
+        reward_loss = self.loss_function(r, reward)
+        # done_loss = self.loss_function(d, done.view(-1))
+        done_loss = F.binary_cross_entropy(d, done)
 
         loss = state_loss + reward_loss + done_loss
 
@@ -580,9 +582,9 @@ class SMCPTD3(TD3):
                         a0 = a
                         
                     # simulate trajectories
-                    ns = self.model.sample(s, a)
-                    r += self._get_reward(s, ns)[:, None] * gamma
-                    gamma *= (1 - self._get_done(ns)[:, None])
+                    ns, r, d = self.model.sample(s, a)
+                    r += r * gamma # self._get_reward(s, ns)[:, None] * gamma
+                    gamma *= (1 - d) # (1 - self._get_done(ns)[:, None])
                     s = ns
                 q = self.critic.Q1(ns, a)
                 r += q * gamma
