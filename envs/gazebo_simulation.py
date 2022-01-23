@@ -1,21 +1,22 @@
 import rospy
+import numpy as np
 
 from std_srvs.srv import Empty
 from gazebo_msgs.msg import ModelState
 from gazebo_msgs.srv import SetModelState, GetModelState
-from geometry_msgs.msg import Quaternion
+from geometry_msgs.msg import Quaternion, Twist
 from sensor_msgs.msg import LaserScan
 from pyquaternion import Quaternion as qt
+from std_msgs.msg import Bool
 
 def create_model_state(x, y, z, angle):
-
+    # the rotation of the angle is in (0, 0, 1) direction
     model_state = ModelState()
     model_state.model_name = 'jackal'
     model_state.pose.position.x = x
     model_state.pose.position.y = y
     model_state.pose.position.z = z
-    e = qt(axis = [0, 0, 1], angle = angle).elements
-    model_state.pose.orientation = Quaternion(e[1], e[2], e[3], e[0])
+    model_state.pose.orientation = Quaternion(0, 0, np.sin(angle/2.), np.cos(angle/2.))
     model_state.reference_frame = "world"
 
     return model_state
@@ -30,6 +31,43 @@ class GazeboSimulation():
         self._model_state_getter = rospy.ServiceProxy('/gazebo/get_model_state', GetModelState)
 
         self._init_model_state = create_model_state(init_position[0],init_position[1],0,init_position[2])
+        
+        self.collision_count = 0
+        self._collision_sub = rospy.Subscriber("/collision", Bool, self.collision_monitor)
+        
+        self.bad_vel_count = 0
+        self.vel_count = 0
+        self._vel_sub = rospy.Subscriber("/jackal_velocity_controller/cmd_vel", Twist, self.vel_monitor)
+        
+    def vel_monitor(self, msg):
+        """
+        Count the number of velocity command and velocity command
+        that is smaller than 0.2 m/s (hard coded here, count as self.bad_vel)
+        """
+        vx = msg.linear.x
+        if vx <= 0:
+            self.bad_vel += 1
+        self.vel_counter += 1
+        
+    def get_bad_vel_num(self):
+        """
+        return the number of bad velocity and reset the count
+        """
+        bad_vel = self.bad_vel_count
+        vel = self.vel_count
+        self.bad_vel_count = 0
+        self.vel_count = 0
+        return bad_vel, vel
+        
+    def collision_monitor(self, msg):
+        if msg.data:
+            self.collision_count += 1
+    
+    def get_hard_collision(self):
+        # hard collision count since last call
+        collided = self.collision_count > 0
+        self.collision_count = 0
+        return collided
 
     def pause(self):
         rospy.wait_for_service('/gazebo/pause_physics')
@@ -65,15 +103,6 @@ class GazeboSimulation():
             except:
                 pass
         return data
-
-    def get_costmap(self):
-        cm = None
-        while cm is None:
-            try:
-                cm = rospy.wait_for_message("/move_base/global_costmap/costmap", OccupancyGrid, timeout=5)
-            except:
-                pass
-        return cm
 
     def get_model_state(self):
         rospy.wait_for_service("/gazebo/get_model_state")

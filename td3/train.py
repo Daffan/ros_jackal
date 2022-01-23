@@ -19,8 +19,7 @@ from tensorboardX import SummaryWriter
 
 sys.path.append(dirname(dirname(abspath(__file__))))
 from envs import registration
-from envs.wrappers import ShapingRewardWrapper, StackFrame
-from information_envs import InfoEnv
+from envs.wrappers import StackFrame
 from net import *
 from td3 import Actor, Critic, TD3, ReplayBuffer, DynaTD3, Model, SMCPTD3
 from collector import CondorCollector, LocalCollector
@@ -73,14 +72,11 @@ def initialize_logging(config):
 
 def initialize_envs(config):
     env_config = config["env_config"]
-    env_config["kwargs"]["safe_rl"] = env_config["safe_rl"]
     if env_config["use_condor"]:
         env_config["kwargs"]["init_sim"] = False
     
     # if not env_config["use_condor"]:
     env = gym.make(env_config["env_id"], **env_config["kwargs"])
-    if env_config["shaping_reward"]:
-        env = ShapingRewardWrapper(env)
     env = StackFrame(env, stack_frame=env_config["stack_frame"])
     # else:
         # If use condor, we want to avoid initializing env instance from the central learner

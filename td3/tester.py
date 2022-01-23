@@ -1,14 +1,13 @@
 from actor import initialize_actor, write_buffer, _debug_print_robot_status
 from train import initialize_policy
 import os
-from os.path import dirname, abspath, join
+from os.path import dirname, abspath
 import gym
-import torch
 import argparse
 
 import sys
 sys.path.append(dirname(dirname(abspath(__file__))))
-from envs.wrappers import ShapingRewardWrapper, StackFrame
+from envs.wrappers import StackFrame
 
 BUFFER_PATH = os.getenv('BUFFER_PATH')
 
@@ -28,14 +27,11 @@ def main(args):
     config = initialize_actor(args.id)
     num_trials = config["condor_config"]["num_trials"]
     env_config = config['env_config']
-    env_config["kwargs"]["safe_rl"] = env_config["safe_rl"]
     world_name = get_world_name(config, args.id)
     test_object = config["condor_config"]["test_object"]
 
     env_config["kwargs"]["world_name"] = world_name
     env = gym.make(env_config["env_id"], **env_config["kwargs"])
-    if env_config["shaping_reward"]:
-        env = ShapingRewardWrapper(env)
     env = StackFrame(env, stack_frame=env_config["stack_frame"]) 
 
     policy, _ = initialize_policy(config, env, init_buffer=False)

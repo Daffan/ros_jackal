@@ -1,8 +1,6 @@
 from os.path import exists, join
 import numpy as np
-import yaml
 import os
-import torch
 import time
 import logging
 import re
@@ -49,7 +47,8 @@ class CondorCollector(object):
             state_next = traj[i+1][0] if i < len(traj)-1 else traj[i][0]
             world = int(info['world'].split(
                 "_")[-1].split(".")[0])  # task index
-            collision_reward = info['collision_reward']
+            collision_reward = -int(info['collided'])
+            assert collision_reward < 0
 
             if self.policy.safe_rl:
                 self.buffer.add(state, action,

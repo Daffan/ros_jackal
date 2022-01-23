@@ -15,7 +15,7 @@ import logging
 
 from train import initialize_policy
 from envs import registration
-from envs.wrappers import ShapingRewardWrapper, StackFrame
+from envs.wrappers import StackFrame
 
 BUFFER_PATH = os.getenv('BUFFER_PATH')
 
@@ -100,12 +100,9 @@ def _debug_print_robot_status(env, count, rew, actions):
 def main(id):
     config = initialize_actor(id)
     env_config = config['env_config']
-    env_config["kwargs"]["safe_rl"] = env_config["safe_rl"]
     world_name = get_world_name(config, id)
     env_config["kwargs"]["world_name"] = world_name
     env = gym.make(env_config["env_id"], **env_config["kwargs"])
-    if env_config["shaping_reward"]:
-        env = ShapingRewardWrapper(env)
     env = StackFrame(env, stack_frame=env_config["stack_frame"])
 
     policy, _ = initialize_policy(config, env, init_buffer=False)

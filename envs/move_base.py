@@ -1,22 +1,15 @@
 import rospy
 import actionlib
-from math import radians
 import numpy as np
 import scipy.signal
-import time
 
 import dynamic_reconfigure.client
 from robot_localization.srv import SetPose
-from pyquaternion import Quaternion as qt
 
 from std_srvs.srv import Empty
-from gazebo_msgs.msg import ModelState
 from geometry_msgs.msg import Quaternion, Pose, PoseWithCovarianceStamped, Twist, PoseStamped
 from move_base_msgs.msg import MoveBaseGoal, MoveBaseAction
-from sensor_msgs.msg import LaserScan
 from nav_msgs.msg import OccupancyGrid, Path, Odometry
-from nav_msgs.srv import GetPlan
-from std_msgs.msg import Bool
 
 def _create_MoveBaseGoal(x, y, angle):
     """
@@ -29,8 +22,7 @@ def _create_MoveBaseGoal(x, y, angle):
     mb_goal.target_pose.pose.position.y = y
     mb_goal.target_pose.pose.position.z = 0 # z must be 0.0 (no height in the map)
 
-    e = qt(axis = [0, 0, 1], angle = angle).elements
-    mb_goal.target_pose.pose.orientation = Quaternion(e[1], e[2], e[3], e[0])
+    mb_goal.target_pose.pose.orientation = Quaternion(0, 0, np.sin(angle/2.), np.cos(angle/2.))
 
     return mb_goal
 
@@ -98,21 +90,6 @@ class Robot_config():
         gphat.tolist()
         self.global_path = gphat
 
-    def vel_monitor(self, msg):
-        """
-        Count the number of velocity command and velocity command
-        that is smaller than 0.2 m/s (hard coded here, count as self.bad_vel)
-        """
-        vx = msg.linear.x
-        if vx <= 0.05:
-            self.bad_vel += 1
-        self.vel_counter += 1
-        
-    def collision_monitor(self, msg):
-        if msg.data:
-            self.collision_count += 1
-
-
 def transform_lg(wp, X, Y, PSI):
     R_r2i = np.matrix([[np.cos(PSI), -np.sin(PSI), X], [np.sin(PSI), np.cos(PSI), Y], [0, 0, 1]])
     R_i2r = np.linalg.inv(R_r2i)
@@ -120,7 +97,6 @@ def transform_lg(wp, X, Y, PSI):
     pr = np.matmul(R_i2r, pi)
     lg = np.array([pr[0,0], pr[1, 0]])
     return lg
-
 
 def transform_gp(gp, X, Y, PSI):
     R_r2i = np.matrix([[np.cos(PSI), -np.sin(PSI), X], [np.sin(PSI), np.cos(PSI), Y], [0, 0, 1]])
@@ -143,16 +119,11 @@ class MoveBase():
         self.global_goal = _create_MoveBaseGoal(goal_position[0], goal_position[1], goal_position[2])
         self._reset_odom = rospy.ServiceProxy('/set_pose', SetPose)
         self._clear_costmap = rospy.ServiceProxy('/move_base/clear_costmaps', Empty)
-        self._make_plan = rospy.ServiceProxy('/move_base/make_plan', GetPlan)
 
         self.robot_config = Robot_config()
         self.sub_robot = rospy.Subscriber("/odometry/filtered", Odometry, self.robot_config.get_robot_status)
         # self.sub_gp = rospy.Subscriber("/move_base/" + self.base_local_planner + "/global_plan", Path, self.robot_config.get_global_path)
         self.sub_gp = rospy.Subscriber("/move_base/NavfnROS/plan", Path, self.robot_config.get_global_path)
-        self.sub_vel = rospy.Subscriber("/jackal_velocity_controller/cmd_vel", Twist, self.robot_config.vel_monitor)
-        self.collision_count = rospy.Subscriber("/collision", Bool, self.robot_config.collision_monitor)
-
-        self.laser_scan = None
 
     def set_navi_param(self, param_name, param):
 
@@ -175,31 +146,6 @@ class MoveBase():
         else:
             param = rospy.get_param('/move_base/global_costmap/inflater_layer/' + param_name)
         return param
-
-    def get_laser_scan(self):
-        data = None
-        while data is None:
-            try:
-                data = rospy.wait_for_message('front/scan', LaserScan, timeout=5)
-            except:
-                pass
-        self.laser_scan = data
-        return data
-
-    def get_collision(self):
-        if self.laser_scan is not None:
-            laser_scan = np.array(self.laser_scan.ranges)
-        else:
-            laser_scan = self.get_laser_scan().ranges
-            self.laser_scan = None
-        d = np.mean(sorted(laser_scan)[:5])
-        return d < 0.3
-    
-    def get_hard_collision(self):
-        # hard collision count since last call
-        collision_count = self.robot_config.collision_count
-        self.robot_config.collision_count = 0
-        return collision_count > 0
 
     def set_global_goal(self):
         self.nav_as.wait_for_server()
@@ -228,51 +174,8 @@ class MoveBase():
         except rospy.ServiceException:
             print ("/clear_costmaps service call failed")
 
-    def make_plan(self):
-        # get_plan = GetPlan()
-
-        start = PoseStamped()
-        start.header.frame_id = "odom"
-        start.pose.position.x = self.robot_config.X
-        start.pose.position.y = self.robot_config.Y
-        start.pose.position.z = self.robot_config.Z
-        x, y, z, w = self.robot_config.qt
-        start.pose.orientation.x = x
-        start.pose.orientation.y = y
-        start.pose.orientation.z = z
-        start.pose.orientation.w = w
-
-        goal = PoseStamped()
-        x, y, angle = self.goal_position
-        e = qt(axis = [0, 0, 1], angle = angle).elements
-        goal.header.frame_id = "odom"
-        goal.pose.position.x = x
-        goal.pose.position.y = y
-        goal.pose.position.z = 0
-        goal.pose.orientation = Quaternion(e[1], e[2], e[3], e[0])
-
-        tolerance = 0.5
-        
-        # get_plan.start = start
-        # get_plan.goal = goal
-        
-
-        rospy.wait_for_service('/move_base/make_plan')
-        try:
-            self._make_plan(start, goal, tolerance)
-        except rospy.ServiceException:
-            print ("/make_plan service call failed")
-
     def reset_global_goal(self, goal_position = [6, 6, 0]):
         self.global_goal = _create_MoveBaseGoal(goal_position[0], goal_position[1], goal_position[2])
-
-    def get_bad_vel_num(self):
-        """
-        return the number of bad velocity and reset the count
-        """
-        bad_vel = self.robot_config.bad_vel
-        vel = self.robot_config.vel_counter
-        return bad_vel, vel
 
     def get_local_goal(self):
         """Get the local goal coordinate relative to the robot's current location
@@ -315,28 +218,6 @@ class MoveBase():
         local_goal.position.y = lg_y
         local_goal.orientation.w = 1
         return local_goal, dist_last_lg
-    
-    def get_final_goal(self):
-        """Get the local goal coordinate relative to the robot's current location
-
-        Returns:
-            [Pose msg]: pose msg with attributes x, y, and orientaton
-        """
-        gp = self.robot_config.global_path
-        X = self.robot_config.X
-        Y = self.robot_config.Y
-        PSI = self.robot_config.PSI
-
-        self.robot_config.last_lg = gp[-1]
-        lg = transform_lg(gp[-1], X, Y, PSI)
-        lg_x = lg[0]
-        lg_y = lg[1]
-
-        final_goal = Pose()
-        final_goal.position.x = lg_x
-        final_goal.position.y = lg_y
-        final_goal.orientation.w = 1
-        return final_goal
 
     def get_global_path(self):
         gp = self.robot_config.global_path
