@@ -13,7 +13,7 @@ env_config:
     collision_reward: -1
     failure_reward: 0
     success_reward: 20
-    goal_reward: 0
+    goal_reward: 1
     max_collision: 1
     init_position: [-2, 3, 1.57]
     goal_position: [0, 10, 0]

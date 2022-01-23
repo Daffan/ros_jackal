@@ -27,9 +27,10 @@ class MotionControlContinuous(JackalGazebo):
         set_goal is replaced with make_plan
         """
         self.step_count = 0
+        self.collision_count = 0
         # Reset robot in odom frame clear_costmap
         self.gazebo_sim.reset()
-        self.start_time = self.time = rospy.get_time()
+        self.start_time = self.current_time = rospy.get_time()
         pos, psi = self._get_pos_psi()
         
         self.gazebo_sim.unpause()

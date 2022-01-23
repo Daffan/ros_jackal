@@ -91,11 +91,9 @@ def get_world_name(config, id):
     return world_name
 
 def _debug_print_robot_status(env, count, rew, actions):
-    Y = env.move_base.robot_config.Y
-    X = env.move_base.robot_config.X
     p = env.gazebo_sim.get_model_state().pose.position
     print(actions)
-    print('current step: %d, X position: %f(world_frame), %f(odem_frame), Y position: %f(world_frame), %f(odom_frame), rew: %f' %(count, p.x, X, p.y, Y , rew))
+    print('current step: %d, X position: %f(world_frame), Y position: %f(world_frame), rew: %f' %(count, p.x, p.y, rew))
 
 def main(id):
     config = initialize_actor(id)

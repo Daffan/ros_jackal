@@ -46,8 +46,8 @@ class GazeboSimulation():
         """
         vx = msg.linear.x
         if vx <= 0:
-            self.bad_vel += 1
-        self.vel_counter += 1
+            self.bad_vel_count += 1
+        self.vel_count += 1
         
     def get_bad_vel_num(self):
         """

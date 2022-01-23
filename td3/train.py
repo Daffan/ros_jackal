@@ -41,7 +41,7 @@ def initialize_logging(config):
     # Config logging
     now = datetime.now()
     dt_string = now.strftime("%Y_%m_%d_%H_%M")
-    if config["env_config"]["safe_rl"]:
+    if training_config["safe_rl"]:
         mode = config["env_config"]["safe_mode"]
         string = f"safe_rl_{mode}_"
         if mode == "lagr":
@@ -192,7 +192,7 @@ def initialize_policy(config, env, init_buffer=True):
             device=device,
             **training_config["policy_args"]
         )
-    elif config['env_config']["safe_rl"]:
+    elif training_config["safe_rl"]:
         safe_critic = Critic(
             state_preprocess=get_encoder(encoder_type, encoder_args),
             head=MLP(input_dim, training_config['encoder_num_layers'], training_config['encoder_hidden_layer_size']),
@@ -207,8 +207,8 @@ def initialize_policy(config, env, init_buffer=True):
             action_range=[action_space_low, action_space_high],
             safe_critic=safe_critic, safe_critic_optim=safe_critic_optim,
             device=device,
-            safe_lagr=config['env_config']['safe_lagr'],
-            safe_mode=config['env_config']['safe_mode'],
+            safe_lagr=training_config['safe_lagr'],
+            safe_mode=training_config['safe_mode'],
             **training_config["policy_args"]
         )
     else:
@@ -225,7 +225,7 @@ def initialize_policy(config, env, init_buffer=True):
         except KeyError:
             config['env_config']["reward_norm"] = False
         buffer = ReplayBuffer(state_dim, action_dim, training_config['buffer_size'],
-                            device=device, safe_rl=config['env_config']["safe_rl"],
+                            device=device, safe_rl=training_config["safe_rl"],
                             reward_norm=config['env_config']["reward_norm"])
     else:
         buffer = None
