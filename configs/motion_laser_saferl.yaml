@@ -10,19 +10,19 @@ env_config:
     max_step: 400
     time_step: 0.2
     slack_reward: 0
-    collision_reward: -1
+    collision_reward: 0
     failure_reward: 0
     success_reward: 20
-    goal_reward: 0
+    goal_reward: 1
     max_collision: 1
     init_position: [-2, 3, 1.57]
     goal_position: [0, 10, 0]
 
-    laser_clip: 4
-    min_v: -0.2
-    max_v: 0.5
-    min_w: -1.57
-    max_w: 1.57
+    laser_clip: 2
+    min_v: -1
+    max_v: 2
+    min_w: -3.14
+    max_w: 3.14
 
 training_config:
   algorithm: "TD3"
@@ -33,7 +33,7 @@ training_config:
   critic_lr: 0.00002
   num_layers: 1
   hidden_layer_size: 512
-  encoder_num_layers: 1
+  encoder_num_layers: 2
   encoder_hidden_layer_size: 512
   exploration_noise_start: 0.1
   exploration_noise_end: 0.0999
@@ -50,7 +50,7 @@ training_config:
 
   safe_rl: True
   safe_mode: "lagr" # span "lyapunov" or "lagr"
-  safe_lagr: 2.
+  safe_lagr: 5
 
   policy_args:
     tau: 0.005

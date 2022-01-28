@@ -41,11 +41,13 @@ class DWAParamContinuous(JackalGazebo):
                     'inflation_radius'],
         **kwargs
     ):
-        self.base_local_planner = base_local_planner
-        self.move_base = self.launch_move_base(goal_position=self.goal_position, base_local_planner=self.base_local_planner)
-        
         self.action_dim = len(param_list)
         super().__init__(**kwargs)
+        
+        if "init_sim" not in kwargs.keys() or kwargs["init_sim"]:
+            self.base_local_planner = base_local_planner
+            self.move_base = self.launch_move_base(goal_position=self.goal_position, base_local_planner=self.base_local_planner)
+        
         self.param_list = param_list
         self.param_init = param_init
 
@@ -69,8 +71,8 @@ class DWAParamContinuous(JackalGazebo):
     
     def _reset_move_base(self):
         # reset the move_base
-        # self.kill_move_base()
-        # self.move_base = self.launch_move_base(goal_position=self.goal_position, base_local_planner=self.base_local_planner)
+        self.kill_move_base()
+        self.move_base = self.launch_move_base(goal_position=self.goal_position, base_local_planner=self.base_local_planner)
         self.move_base.reset_robot_in_odom()
         self._clear_costmap()
         self.move_base.set_global_goal()
@@ -106,7 +108,7 @@ class DWAParamContinuous(JackalGazebo):
         
         self.gazebo_sim.unpause()
         self._reset_move_base()
-        obs = self._get_observation(pos, psi, np.array([0, 0]))
+        obs = self._get_observation(pos, psi, np.array(self.param_init))
         self.gazebo_sim.pause()
         
         goal_pos = np.array([self.world_frame_goal[0] - pos.x, self.world_frame_goal[1] - pos.y])

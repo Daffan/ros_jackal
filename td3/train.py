@@ -42,10 +42,10 @@ def initialize_logging(config):
     now = datetime.now()
     dt_string = now.strftime("%Y_%m_%d_%H_%M")
     if training_config["safe_rl"]:
-        mode = config["env_config"]["safe_mode"]
+        mode = training_config["safe_mode"]
         string = f"safe_rl_{mode}_"
         if mode == "lagr":
-            string = string + "lagr"+str(config["env_config"]["safe_lagr"]) + "_"
+            string = string + "lagr"+str(training_config["safe_lagr"]) + "_"
     else:
         string = ""
 
@@ -135,12 +135,7 @@ def initialize_policy(config, env, init_buffer=True):
         actor.parameters(), 
         lr=training_config['actor_lr']
     )
-
-    #x = torch.rand(10, config["env_config"]["stack_frame"], np.prod(state_dim)).cuda()
-    #import pdb; pdb.set_trace()
-    #y = actor(x)
-
-    #state_preprocess = CNN(config["env_config"]["stack_frame"]) if training_config["network"] == "cnn" else None
+    print("Total number of parameters: %d" %sum(p.numel() for p in actor.parameters()))
     input_dim += np.prod(action_dim)
     critic = Critic(
         state_preprocess=get_encoder(encoder_type, encoder_args),

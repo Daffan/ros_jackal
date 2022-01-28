@@ -164,6 +164,7 @@ if __name__ == "__main__":
     acc_mean_return = []
     acc_mean_success = []
     acc_mean_time = []
+    acc_mean_metrics = []
     
     while len(jobs) > 0:
         time.sleep(20)
@@ -196,14 +197,25 @@ if __name__ == "__main__":
                 mean_collision = np.mean([t[4] for t in results[world]])
                 mean_recovery = np.mean([t[5] for t in results[world]])
                 
-                print("finishing world %d: %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, support %d/%d" \
-                    %(world, mean_return, mean_length, mean_success, mean_time, mean_collision, mean_recovery, mean_all_time, len(times), len(results[world])))
+                if os.path.exists("jackal_helper/worlds/BARN/path_files/path_%s.npy" %(world)):
+                    wps = np.load("jackal_helper/worlds/BARN/path_files/path_%s.npy" %(world))
+                    path_length = 0
+                    for wp1, wp2 in zip(wps[1:], wps[:-1]):
+                        path_length += np.linalg.norm(wp1 - wp2) * 0.15
+                else:
+                    path_length = 7
+                mean_metrics = np.mean(success * path_length / 2 / ep_time)
+                
+                
+                print("finishing world %d: %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, support %d/%d" \
+                    %(world, mean_return, mean_length, mean_success, mean_time, mean_collision, mean_recovery, mean_all_time, mean_metrics, len(times), len(results[world])))
                 
                 acc_mean_return.append(mean_return)
                 acc_mean_success.append(mean_success)
                 if mean_time > 0:
                     acc_mean_time.append(mean_time)
-                print("mean return: %.2f, success: %.2f, time: %.2f, support: %d" %(np.mean(acc_mean_return), np.mean(acc_mean_success), np.mean(acc_mean_time), len(acc_mean_return)))
+                acc_mean_metrics.append(mean_metrics)
+                print("mean return: %.2f, success: %.2f, time: %.2f, metrics: %.2f, support: %d" %(np.mean(acc_mean_return), np.mean(acc_mean_success), np.mean(acc_mean_time), np.mean(acc_mean_metrics), len(acc_mean_return)))
 
                 continue
             tmp_jobs.append(j)
@@ -215,7 +227,7 @@ if __name__ == "__main__":
         
     with open(join(model_dir, "test_results.pickle"), "wb") as f:
         pickle.dump(results, f)
-    print("mean return: %.2f, success: %.2f, time: %.2f, support: %d" %(np.mean(acc_mean_return), np.mean(acc_mean_success), np.mean(acc_mean_time), len(acc_mean_return)))
+    print("mean return: %.2f, success: %.2f, time: %.2f, metrics: %.2f, support: %d" %(np.mean(acc_mean_return), np.mean(acc_mean_success), np.mean(acc_mean_time), np.mean(acc_mean_metrics), len(acc_mean_return)))
 
     shutil.rmtree(buffer_path, ignore_errors=True)
             

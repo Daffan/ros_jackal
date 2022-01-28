@@ -19,8 +19,8 @@ env_config:
     goal_position: [0, 10, 0]
 
     laser_clip: 4
-    min_v: -0.2
-    max_v: 0.5
+    min_v: -0.5
+    max_v: 1
     min_w: -1.57
     max_w: 1.57
 

@@ -48,7 +48,7 @@ class CondorCollector(object):
             world = int(info['world'].split(
                 "_")[-1].split(".")[0])  # task index
             collision_reward = -int(info['collided'])
-            assert collision_reward < 0
+            assert collision_reward <= 0, "%.2f" %collision_reward
 
             if self.policy.safe_rl:
                 self.buffer.add(state, action,

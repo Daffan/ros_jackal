@@ -85,7 +85,7 @@ class JackalGazebo(gym.Env):
         self.step_count = 0
         self.collision_count = 0
         self.collided = 0
-        self.start_time = self.current_time = rospy.get_time()
+        self.start_time = self.current_time = None
         
     def seed(self, seed):
         np.random.seed(seed)
@@ -112,7 +112,7 @@ class JackalGazebo(gym.Env):
         
         timeout = self.step_count >= self.max_step
         
-        collided = self.gazebo_sim.get_hard_collision()
+        collided = self.gazebo_sim.get_hard_collision() and self.step_count > 1
         self.collision_count += int(collided)
         
         done = flip or success or timeout or self.collision_count >= self.max_collision
@@ -126,7 +126,7 @@ class JackalGazebo(gym.Env):
         if collided:
             rew += self.collision_reward
 
-        rew += np.linalg.norm(goal_pos - self.last_goal_pos) * self.goal_reward
+        rew += (np.linalg.norm(self.last_goal_pos) - np.linalg.norm(goal_pos)) * self.goal_reward
         self.last_goal_pos = goal_pos
         
         info = dict(
@@ -163,8 +163,7 @@ class JackalGazebo(gym.Env):
         q3 = pose.orientation.z
         q0 = pose.orientation.w
         psi = np.arctan2(2 * (q0*q3 + q1*q2), (1 - 2*(q2**2+q3**2)))
-        psi -= np.pi  # in range (-pi, +pi)
-        assert -np.pi <= psi <= np.pi
+        assert -np.pi <= psi <= np.pi, psi
         
         return pos, psi
 
