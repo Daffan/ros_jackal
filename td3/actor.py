@@ -45,19 +45,21 @@ def initialize_actor(id):
 
     return config
 
-def load_policy(policy):
+def load_policy(policy, is_validation):
     f = True
+    policy_name = "validation_policy" if is_validation else "policy"
     while f:
         try:
-            if not os.path.exists(join(BUFFER_PATH, "policy_copy_actor")):
-                policy.load(BUFFER_PATH, "policy")
+            if not os.path.exists(join(BUFFER_PATH, "%s_copy_actor" %(policy_name))):
+                policy.load(BUFFER_PATH, policy_name)
             f = False
         except FileNotFoundError:
-            logging.exception('')
             time.sleep(1)
         except:
             logging.exception('')
             time.sleep(1)
+    if is_validation:
+        policy.exploration_noise = 0
     return policy
 
 def write_buffer(traj, id):
@@ -78,17 +80,23 @@ def write_buffer(traj, id):
     return ep
 
 def get_world_name(config, id):
-    if len(config["condor_config"]["worlds"]) < config["condor_config"]["num_actor"]:
-        duplicate_time = config["condor_config"]["num_actor"] // len(config["condor_config"]["worlds"]) + 1
-        worlds = config["condor_config"]["worlds"] * duplicate_time
+    is_validation = id >= config["condor_config"]["num_actor"]
+    if not is_validation:
+        if len(config["condor_config"]["worlds"]) < config["condor_config"]["num_actor"]:
+            duplicate_time = config["condor_config"]["num_actor"] // len(config["condor_config"]["worlds"]) + 1
+            worlds = config["condor_config"]["worlds"] * duplicate_time
+        else:
+            worlds = config["condor_config"]["worlds"].copy()
+            random.shuffle(worlds)
+            worlds = worlds[:config["condor_config"]["num_actor"]]
+        world_name = worlds[id]
     else:
-        worlds = config["condor_config"]["worlds"].copy()
-        random.shuffle(worlds)
-        worlds = worlds[:config["condor_config"]["num_actor"]]
-    world_name = worlds[id]
+        worlds = config["condor_config"]["validation_worlds"]
+        assert id - config["condor_config"]["num_actor"] < len(worlds), "one actor per valiation worlds!"
+        world_name = worlds[id - config["condor_config"]["num_actor"]]
     if isinstance(world_name, int):
         world_name = "BARN/world_%d.world" %(world_name)
-    return world_name
+    return world_name, is_validation
 
 def _debug_print_robot_status(env, count, rew, actions):
     p = env.gazebo_sim.get_model_state().pose.position
@@ -98,7 +106,7 @@ def _debug_print_robot_status(env, count, rew, actions):
 def main(id):
     config = initialize_actor(id)
     env_config = config['env_config']
-    world_name = get_world_name(config, id)
+    world_name, is_validation = get_world_name(config, id)
     env_config["kwargs"]["world_name"] = world_name
     env = gym.make(env_config["env_id"], **env_config["kwargs"])
     env = StackFrame(env, stack_frame=env_config["stack_frame"])
@@ -111,7 +119,7 @@ def main(id):
         obs = env.reset()
         traj = []
         done = False
-        policy = load_policy(policy)
+        policy = load_policy(policy, is_validation)
         while not done:
             actions = policy.select_action(obs)
             obs_new, rew, done, info = env.step(actions)

@@ -114,7 +114,7 @@ if __name__ == "__main__":
     # Create buffer folder
     hash_code = uuid.uuid4().hex
     # buffer_path = os.path.join(os.environ['HOME'], hash_code)
-    buffer_path = os.path.join("/scratch/cluster/zifan", hash_code)
+    buffer_path = os.path.join("/scratch/cluster/zifan/test", hash_code)
     os.environ['BUFFER_PATH'] = buffer_path
     if not os.path.exists(buffer_path):
         os.mkdir(buffer_path)

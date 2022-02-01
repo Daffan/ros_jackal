@@ -249,12 +249,24 @@ def train(env, policy, buffer, config):
     epinfo_buf = collections.deque(maxlen=300)
     world_ep_buf = collections.defaultdict(lambda: collections.deque(maxlen=20))
     t0 = time.time()
+    val_steps = list(range(0, training_args["max_step"], training_config["val_interval"]))
+    best_val_success = 0
+    best_val_results = None
     while n_steps < training_args["max_step"]:
+        if len(val_steps) > 0 and val_steps[0] <= n_steps:
+            print(">>>>>>>> Validating at step %d" %n_steps)
+            val_results = collector.set_validation(n_steps)  # This will collect the last validation results
+            val_steps.pop(0)
+        else:
+            val_results = None
+            
         # Linear decaying exploration noise from "start" -> "end"
         policy.exploration_noise = \
             - (training_config["exploration_noise_start"] - training_config["exploration_noise_end"]) \
             *  n_steps / training_args["max_step"] + training_config["exploration_noise_start"]
         steps, epinfo = collector.collect(training_args["collect_per_step"])
+        collector.collect_validation()
+        
         n_steps += steps
         n_iter += 1
         n_ep += len(epinfo)
@@ -286,19 +298,31 @@ def train(env, policy, buffer, config):
         }
         log.update(loss_info)
         logging.info(pformat(log))
+        
+        if val_results is not None:
+            val_step = val_results.pop("val_step")
+            for k in val_results.keys():
+                writer.add_scalar('validation/' + k, val_results[k], global_step=val_step)
+            if val_results["val_success"] >= best_val_success:
+                BASE_PATH = os.getenv('BUFFER_PATH')
+                src = join(BASE_PATH, "policy_%d" %val_step)
+                dst = join(BASE_PATH, "best_policy")
+                assert exists(src + "_actor")
+                shutil.copyfile(src + "_actor", dst + "_actor")
+                shutil.copyfile(src + "_noise", dst + "_noise")
+                if exists(src + "_model"):
+                    shutil.copyfile(src + "_model", dst + "_model")
+                best_val_results = val_results
+                best_val_results["val_step"] = val_step
+        
+        if best_val_results is not None:
+            logging.info(pformat(best_val_results))
 
         if n_iter % training_config["log_intervals"] == 0:
             for k in log.keys():
                 writer.add_scalar('train/' + k, log[k], global_step=n_steps)
-            policy.save(save_path, "policy")
+            policy.save(save_path, "last_policy")
             print("Logging to %s" %save_path)
-            if config["training_config"]["MPC"] or config["training_config"]["dyna_style"]:
-                if n_steps > 200000 and not exists(join(save_path, "policy_200k_actor")):
-                    policy.save(save_path, "policy_200k")
-                if n_steps > 1000000 and not exists(join(save_path, "policy_1M_actor")):
-                    policy.save(save_path, "policy_1M")
-                if n_steps > 4000000 and not exists(join(save_path, "policy_4M_actor")):
-                    policy.save(save_path, "policy_4M")  
 
             for k in world_ep_buf.keys():
                 writer.add_scalar(k + "/Episode_return", np.mean([epinfo["ep_rew"] for epinfo in world_ep_buf[k]]), global_step=n_steps)

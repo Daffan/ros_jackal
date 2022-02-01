@@ -39,6 +39,7 @@ training_config:
   exploration_noise_end: 0.0999
   pre_collect: 4096
   log_intervals: 2
+  val_interval: 200000
 
   dyna_style: False
   n_simulated_update: 10
@@ -69,6 +70,7 @@ training_config:
 condor_config:
   test_object: "local"  # or "dwa"
   num_actor: 200
+  validation_trials: 10
     
   # 10-static + 10-dynamic
   # worlds: [153, 43, 20, 209, 74, 274, 127, 192, 56, 291, 500, 501, 502, 503, 504, 505, 506, 507, 508, 509]
