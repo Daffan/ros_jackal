@@ -92,8 +92,9 @@ def get_world_name(config, id):
         world_name = worlds[id]
     else:
         worlds = config["condor_config"]["validation_worlds"]
-        assert id - config["condor_config"]["num_actor"] < len(worlds), "one actor per valiation worlds!"
-        world_name = worlds[id - config["condor_config"]["num_actor"]]
+        world_id = (id - config["condor_config"]["num_actor"]) % len(worlds)
+        assert world_id < len(worlds), "one actor per valiation worlds!"
+        world_name = worlds[world_id]
     if isinstance(world_name, int):
         world_name = "BARN/world_%d.world" %(world_name)
     return world_name, is_validation

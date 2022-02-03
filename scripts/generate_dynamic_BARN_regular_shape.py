@@ -79,7 +79,7 @@ target_link_libraries(%s ${GAZEBO_LIBRARIES})\n\
 " %(n, n, n)
     return s
 
-def make_moving_model(plugin, length):
+def make_moving_model(plugin, length, width):
     name = plugin.split(".so")[0]
     return "\n\
     <model name='%s'>\n\
@@ -100,7 +100,7 @@ def make_moving_model(plugin, length):
         <collision name='collision'>\n\
           <geometry>\n\
             <box>\n\
-              <size>0.1 %.2f 1</size>\n\
+              <size>%.2f %.2f 1</size>\n\
             </box>\n\
           </geometry>\n\
           <max_contacts>10</max_contacts>\n\
@@ -120,7 +120,7 @@ def make_moving_model(plugin, length):
         <visual name='visual'>\n\
           <geometry>\n\
             <box>\n\
-              <size>0.1 %.2f 1</size>\n\
+              <size>%.2f %.2f 1</size>\n\
             </box>\n\
           </geometry>\n\
 	    <material>\n\
@@ -140,9 +140,9 @@ def make_moving_model(plugin, length):
       </link>\n\
       <plugin name='%s' filename='%s'/>\n\
     </model>\n\
-" %(name, length, length, name, plugin)
+" %(name, width, length, width, length, name, plugin)
 
-def sample_waypoints(direction, min_speed, max_speed, idx):
+def sample_waypoints(name, direction, min_speed, max_speed, idx):
     assert direction in DIRECTIONS, "direction %s not defined!" %(direction)
     x1, y1 = BOTTOM_LEFT
     x2, y2 = TOP_RIGHT
@@ -171,7 +171,7 @@ def sample_waypoints(direction, min_speed, max_speed, idx):
     speed = np.random.uniform(min_speed, max_speed)
     time = distance / speed
     angle = np.random.uniform(low=-np.pi/2, high=np.pi/2.) # same angle, no rotation!
-    return "board_%s_%d_%d" %(direction, int(speed * 100), idx), [(0, start_x, start_y, angle), (time, end_x, end_y, angle)]
+    return "%s_%s_%d_%d" %(name, direction, int(speed * 100), idx), [(0, start_x, start_y, angle), (time, end_x, end_y, angle)]
 
 BOTTOM_LEFT = (-4.5, 5)
 TOP_RIGHT = (0, 9.5)
@@ -186,13 +186,16 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--save_dir', type=str, default="jackal_helper/worlds/BARN")
+    parser.add_argument('--name', type=str, default="dyna")
     parser.add_argument('--seed', type=int, default=11)
     parser.add_argument('--min_speed', type=float, default=0.1)
     parser.add_argument('--max_speed', type=float, default=1)
     parser.add_argument('--min_object', type=int, default=2)
     parser.add_argument('--max_object', type=int, default=6)
-    parser.add_argument('--min_length', type=float, default=1)
-    parser.add_argument('--max_length', type=float, default=2)
+    parser.add_argument('--min_length', type=float, default=0.5)
+    parser.add_argument('--max_length', type=float, default=3)
+    parser.add_argument('--min_width', type=float, default=0.5)
+    parser.add_argument('--max_width', type=float, default=1)
     parser.add_argument('--start_idx', type=int, default=400)
     parser.add_argument('--n_worlds', type=int, default=100)
     parser.add_argument('--rebuild_plugin', action="store_true")
@@ -211,7 +214,7 @@ if __name__ == "__main__":
         name_list = []
         for d in DIRECTIONS:
             for i in range(args.plugins_per_direction):
-                name, waypoints = sample_waypoints(d, args.min_speed, args.max_speed, i)
+                name, waypoints = sample_waypoints(args.name, d, args.min_speed, args.max_speed, i)
                 name_list.append(name)
                 fs = make_head(name, waypoints[-1][0] - waypoints[0][0])
                 for wp in waypoints:
@@ -224,7 +227,8 @@ if __name__ == "__main__":
         with open(os.path.join(plugins_dir, "CMakeLists.txt"), "w") as f:
             f.writelines(cmake_fs)
         
-        os.mkdir(os.path.join(plugins_dir, "build"))
+        if not os.path.exists(os.path.join(plugins_dir, "build")):
+            os.mkdir(os.path.join(plugins_dir, "build"))
     
         wd = os.getcwd()
         os.chdir(os.path.join(wd, plugins_dir, "build"))
@@ -242,11 +246,12 @@ if __name__ == "__main__":
         part2 = ss.split("TOKEN")[1]
         
     for i in range(args.n_worlds):
-        mid = ""
+        mid = "\n"
         for j in range(np.random.randint(args.min_object, args.max_object)):
             plugin = np.random.choice(plugins)
             length = np.random.uniform(args.min_length, args.max_length)
-            mid += make_moving_model(plugin, length)
+            width = np.random.uniform(args.min_width, args.max_width)
+            mid += make_moving_model(plugin, width, length)
             
         with open(os.path.join(args.save_dir, "world_%d.world" %(i + args.start_idx)), "w") as f:
             f.write(part1 + mid + part2)

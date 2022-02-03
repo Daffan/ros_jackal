@@ -34,7 +34,7 @@ class CondorCollector(object):
         self.validation_worlds = ["BARN/world_%d.world" %w if isinstance(w, int) else w \
             for w in config['condor_config']['validation_worlds']]
         self.ids = list(range(self.num_actor))
-        self.validation_ids = [i + self.num_actor for i in list(range(len(self.validation_worlds)))]
+        self.validation_ids = [i + self.num_actor for i in list(range(2 * len(self.validation_worlds)))]
         self.ep_count = [0] * self.num_actor
         self.validation_results = None
         self.validation_step = None
@@ -160,6 +160,10 @@ class CondorCollector(object):
         while val_results is None and n_steps > 0:
             time.sleep(1)
             val_results = self.collect_validation()
+            
+            # This will clear the trajs from actors (prevent disk exceeded) 
+            for i in self.ids:
+                self.collect_worker_traj(i)
         self.validation_step = n_steps
         self.update_policy("policy_%d" %n_steps)
         self.update_policy("validation_policy")

@@ -98,8 +98,10 @@ if __name__ == "__main__":
     
     parser = argparse.ArgumentParser(description = 'test on condor cluster')
     parser.add_argument('--model_dir', dest='model_dir', type = str)
+    parser.add_argument('--policy_name', dest='policy_name', default="last_policy", type = str)
 
-    model_dir = parser.parse_args().model_dir
+    args = parser.parse_args()
+    model_dir = args.model_dir
 
     print(">>>>>>>> Loading the model from %s" %(model_dir))
 
@@ -125,11 +127,11 @@ if __name__ == "__main__":
         join(buffer_path, "config.yaml")    
     )
     shutil.copyfile(
-        join(model_dir, "policy_actor"), 
+        join(model_dir, "%s_actor" %args.policy_name), 
         join(buffer_path, "policy_actor")
     )
     shutil.copyfile(
-        join(model_dir, "policy_noise"), 
+        join(model_dir, "%s_noise" %args.policy_name), 
         join(buffer_path, "policy_noise")
     )
     # Set the exploration noise to be 0

@@ -250,10 +250,9 @@ def train(env, policy, buffer, config):
     world_ep_buf = collections.defaultdict(lambda: collections.deque(maxlen=20))
     t0 = time.time()
     val_steps = list(range(0, training_args["max_step"], training_config["val_interval"]))
-    best_val_success = 0
     best_val_results = None
     while n_steps < training_args["max_step"]:
-        if len(val_steps) > 0 and val_steps[0] <= n_steps:
+        if len(val_steps) > 0 and val_steps[0] <= n_steps and training_config["validation"]:
             print(">>>>>>>> Validating at step %d" %n_steps)
             val_results = collector.set_validation(n_steps)  # This will collect the last validation results
             val_steps.pop(0)
@@ -265,7 +264,8 @@ def train(env, policy, buffer, config):
             - (training_config["exploration_noise_start"] - training_config["exploration_noise_end"]) \
             *  n_steps / training_args["max_step"] + training_config["exploration_noise_start"]
         steps, epinfo = collector.collect(training_args["collect_per_step"])
-        collector.collect_validation()
+        if training_config["validation"]:
+            collector.collect_validation()
         
         n_steps += steps
         n_iter += 1
@@ -303,10 +303,10 @@ def train(env, policy, buffer, config):
             val_step = val_results.pop("val_step")
             for k in val_results.keys():
                 writer.add_scalar('validation/' + k, val_results[k], global_step=val_step)
-            if val_results["val_success"] >= best_val_success:
+            if best_val_results is None or val_results["val_success"] >= best_val_results["val_success"]:
                 BASE_PATH = os.getenv('BUFFER_PATH')
                 src = join(BASE_PATH, "policy_%d" %val_step)
-                dst = join(BASE_PATH, "best_policy")
+                dst = join(save_path, "best_policy")
                 assert exists(src + "_actor")
                 shutil.copyfile(src + "_actor", dst + "_actor")
                 shutil.copyfile(src + "_noise", dst + "_noise")
