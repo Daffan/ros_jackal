@@ -134,6 +134,11 @@ if __name__ == "__main__":
         join(model_dir, "%s_noise" %args.policy_name), 
         join(buffer_path, "policy_noise")
     )
+    if os.path.exists(join(model_dir, "%s_model" %args.policy_name)):
+        shutil.copyfile(
+            join(model_dir, "%s_model" %args.policy_name), 
+            join(buffer_path, "policy_model")
+        )
     # Set the exploration noise to be 0
     with open(join(buffer_path, 'eps.txt'), 'w') as f:
         f.write(str(0))
@@ -167,6 +172,7 @@ if __name__ == "__main__":
     acc_mean_success = []
     acc_mean_time = []
     acc_mean_metrics = []
+    acc_mean_collision = []
     
     while len(jobs) > 0:
         time.sleep(20)
@@ -209,7 +215,7 @@ if __name__ == "__main__":
                 mean_metrics = np.mean(success * path_length / 2 / ep_time)
                 
                 
-                print("finishing world %d: %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, support %d/%d" \
+                print("finishing world %d: %.4f, %.4f, %.4f, %.4f, %.4f, %.4f, %.4f, %.4f, support %d/%d" \
                     %(world, mean_return, mean_length, mean_success, mean_time, mean_collision, mean_recovery, mean_all_time, mean_metrics, len(times), len(results[world])))
                 
                 acc_mean_return.append(mean_return)
@@ -217,7 +223,8 @@ if __name__ == "__main__":
                 if mean_time > 0:
                     acc_mean_time.append(mean_time)
                 acc_mean_metrics.append(mean_metrics)
-                print("mean return: %.2f, success: %.2f, time: %.2f, metrics: %.2f, support: %d" %(np.mean(acc_mean_return), np.mean(acc_mean_success), np.mean(acc_mean_time), np.mean(acc_mean_metrics), len(acc_mean_return)))
+                acc_mean_collision.append(mean_collision)
+                print("mean return: %.4f, success: %.4f, time: %.4f, metrics: %.4f, support: %d, collision: %.4f" %(np.mean(acc_mean_return), np.mean(acc_mean_success), np.mean(acc_mean_time), np.mean(acc_mean_metrics), len(acc_mean_return), np.mean(acc_mean_collision)))
 
                 continue
             tmp_jobs.append(j)
@@ -229,7 +236,7 @@ if __name__ == "__main__":
         
     with open(join(model_dir, "test_results.pickle"), "wb") as f:
         pickle.dump(results, f)
-    print("mean return: %.2f, success: %.2f, time: %.2f, metrics: %.2f, support: %d" %(np.mean(acc_mean_return), np.mean(acc_mean_success), np.mean(acc_mean_time), np.mean(acc_mean_metrics), len(acc_mean_return)))
+    print("mean return: %.4f, success: %.4f, time: %.4f, metrics: %.4f, support: %d, collision: %.4f" %(np.mean(acc_mean_return), np.mean(acc_mean_success), np.mean(acc_mean_time), np.mean(acc_mean_metrics), len(acc_mean_return), np.mean(acc_mean_collision)))
 
     shutil.rmtree(buffer_path, ignore_errors=True)
             

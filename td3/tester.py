@@ -20,7 +20,7 @@ def get_world_name(config, id):
 
 def load_policy(policy):
     policy.load(BUFFER_PATH, "policy")
-    policy.exploration_noise = 0
+    policy.exploration_noise = 0.0
     return policy
 
 def main(args):

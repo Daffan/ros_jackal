@@ -94,13 +94,12 @@ class Model(nn.Module):
         x = self.head(sa)
         ls = self.laser_state_fc(x)
         fs = self.feature_state_fc(x)
-        # We decide not to predict reward and termination for now
         r = self.reward_fc(x)
         d = F.sigmoid(self.done_fc(x))
         if self.deterministic:
             s = torch.cat([ls, fs], axis=1)
         else:
-            s = torch.cat([ls[:, :self.laser_dim], fs[:, :self.feature_dim], ls[:, self.laser_dim:], fs[:, self.feature_dim:]])
+            s = torch.cat([ls[:, :self.laser_dim // 2], fs[:, :self.feature_dim // 2], ls[:, self.laser_dim // 2:], fs[:, self.feature_dim // 2:]], axis=1)
 
         return s, r, d
     
@@ -112,14 +111,13 @@ class Model(nn.Module):
             else:
                 return s[:, None, :], r, d
         else:
-            out = self.model(state, action)
-            mean = out[..., self.model.state_dim // 2:]
-            logvar = out[..., :self.model.state_dim // 2]
+            mean = s[..., self.state_dim // 2:]
+            logvar = s[..., :self.state_dim // 2]
             recon_dist = Normal(mean, torch.exp(logvar))
             if self.history_length > 1:
-                return torch.cat([state[:, 1:, :], recon_dist.sample()[:, None, :]], axis=1)
+                return torch.cat([state[:, 1:, :], recon_dist.sample()[:, None, :]], axis=1), r, d
             else:
-                return recon_dist.sample()[:, None, :]
+                return recon_dist.sample()[:, None, :], r, d
 
 class TD3(object):
     def __init__(
@@ -271,7 +269,7 @@ class TD3(object):
             for param, target_param in zip(self.critic.parameters(), self.critic_target.parameters()):
                 target_param.data.copy_(
                     self.tau * param.data + (1 - self.tau) * target_param.data)
-
+                
             for param, target_param in zip(self.actor.parameters(), self.actor_target.parameters()):
                 target_param.data.copy_(
                     self.tau * param.data + (1 - self.tau) * target_param.data)
@@ -341,6 +339,7 @@ class TD3(object):
         self.safe_critic_optimizer.step()
 
         actor_loss = None
+        safe_actor_loss = None
 
         # Delayed policy updates
         if self.total_it % self.update_actor_freq == 0:
@@ -371,6 +370,10 @@ class TD3(object):
             for param, target_param in zip(self.critic.parameters(), self.critic_target.parameters()):
                 target_param.data.copy_(
                     self.tau * param.data + (1 - self.tau) * target_param.data)
+                
+            for param, target_param in zip(self.safe_critic.parameters(), self.safe_critic_target.parameters()):
+                target_param.data.copy_(
+                    self.tau * param.data + (1 - self.tau) * target_param.data)
 
             for param, target_param in zip(self.actor.parameters(), self.actor_target.parameters()):
                 target_param.data.copy_(
@@ -381,8 +384,11 @@ class TD3(object):
         return {
             "Actor_grad_norm": self.grad_norm(self.actor),
             "Critic_grad_norm": self.grad_norm(self.critic),
+            "Safe_critic_norm": self.grad_norm(self.safe_critic),
             "Actor_loss": actor_loss,
-            "Critic_loss": critic_loss
+            "Safe_actor_loss": safe_actor_loss.item() if safe_actor_loss else None,
+            "Critic_loss": critic_loss,
+            "safe_critic_loss": safe_critic_loss.item()
         }
 
     def grad_norm(self, model):
@@ -410,9 +416,10 @@ class TD3(object):
 
 
 class DynaTD3(TD3):
-    def __init__(self, model, model_optm, n_simulated_update, *args, **kw_args):
+    def __init__(self, model, model_optm, model_update_per_step, n_simulated_update, *args, **kw_args):
         self.model = model
         self.model_optimizer = model_optm
+        self.model_update_per_step = model_update_per_step
         self.n_simulated_update = n_simulated_update
         self.loss_function = nn.MSELoss()
         super().__init__(*args, **kw_args)
@@ -426,11 +433,11 @@ class DynaTD3(TD3):
             pred_next_state, r, d = self.model(state, action)
             state_loss = self.loss_function(pred_next_state, next_state[:, -1, :])
         else:
-            out = self.model(state, action)
-            mean = out[..., self.model.state_dim // 2:]
-            logvar = out[..., :self.model.state_dim // 2]
+            pred_next_state_mean_var, r, d = self.model(state, action)
+            mean = pred_next_state_mean_var[..., self.model.state_dim // 2:]
+            logvar = pred_next_state_mean_var[..., :self.model.state_dim // 2]
             recon_dist = Normal(mean, torch.exp(logvar))
-            state_loss = -recon_dist.log_prob(next_state).sum(dim=-1).mean()  # nll loss
+            state_loss = -recon_dist.log_prob(next_state[:, -1, :]).sum(dim=-1).mean()  # nll loss
         
         # pred_reward = self._get_reward(state, pred_next_state[:, None, :])
         # pred_done = self._get_done(pred_next_state[:, None, :])
@@ -484,7 +491,8 @@ class DynaTD3(TD3):
 
     def train(self, replay_buffer, batch_size=256):
         rl_loss_info = super().train(replay_buffer, batch_size)
-        model_loss_info = self.train_model(replay_buffer, batch_size)
+        for _ in range(self.model_update_per_step):
+            model_loss_info = self.train_model(replay_buffer, batch_size)
 
         simulated_rl_loss_infos = []
         for _ in range(self.n_simulated_update):
@@ -517,11 +525,12 @@ class DynaTD3(TD3):
 
 
 class SMCPTD3(TD3):
-    def __init__(self, model, model_optm, horizon, num_particle, *args, **kw_args):
+    def __init__(self, model, model_optm, horizon, num_particle, model_update_per_step, *args, **kw_args):
         self.model = model
         self.model_optimizer = model_optm
         self.horizon = horizon
         self.num_particle = num_particle
+        self.model_update_per_step = model_update_per_step
         self.loss_function = nn.MSELoss()
         super().__init__(*args, **kw_args)
 
@@ -534,11 +543,11 @@ class SMCPTD3(TD3):
             pred_next_state, r, d = self.model(state, action)
             state_loss = self.loss_function(pred_next_state, next_state[:, -1, :])
         else:
-            out = self.model(state, action)
-            mean = out[..., self.model.state_dim // 2:]
-            logvar = out[..., :self.model.state_dim // 2]
+            pred_next_state_mean_var, r, d = self.model(state, action)
+            mean = pred_next_state_mean_var[..., self.model.state_dim // 2:]
+            logvar = pred_next_state_mean_var[..., :self.model.state_dim // 2]
             recon_dist = Normal(mean, torch.exp(logvar))
-            state_loss = -recon_dist.log_prob(next_state).sum(dim=-1).mean()  # nll loss
+            state_loss = -recon_dist.log_prob(next_state[:, -1, :]).sum(dim=-1).mean()  # nll loss
         
         # pred_reward = self._get_reward(state, pred_next_state[:, None, :])
         # pred_done = self._get_done(pred_next_state[:, None, :])
@@ -558,7 +567,8 @@ class SMCPTD3(TD3):
         
     def train(self, replay_buffer, batch_size=256):
         rl_loss_info = super().train(replay_buffer, batch_size)
-        model_loss_info = self.train_model(replay_buffer, batch_size)
+        for _ in range(self.model_update_per_step):
+            model_loss_info = self.train_model(replay_buffer, batch_size)
         
         loss_info = {}
         loss_info.update(rl_loss_info)
@@ -567,7 +577,7 @@ class SMCPTD3(TD3):
         return loss_info
 
     def select_action(self, state):
-        if self.exploration_noise > 0:
+        if self.exploration_noise >= 0:
             assert len(state.shape) == 2, "does not support batched action selection!"
             state = torch.FloatTensor(state).to(self.device)[None, ...]  # (batch_size=1, history_length, 723)
             s = state.repeat(self.num_particle, 1, 1).clone()

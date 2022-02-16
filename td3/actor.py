@@ -71,12 +71,13 @@ def write_buffer(traj, id):
         sorted(eps)
         ep = eps[-1] + 1
     print(">>>>>>>>>>>>>>>>>>>>>>>>>", ep)
-    with open(join(BUFFER_PATH, 'actor_%s' %(str(id)), 'traj_%d.pickle' %(ep)), 'wb') as f:
-        try:
-            pickle.dump(traj, f)
-        except OSError as e:
-            logging.exception('Failed to dump the trajectory! %s', e)
-            pass
+    if len(file_names) < 10:
+        with open(join(BUFFER_PATH, 'actor_%s' %(str(id)), 'traj_%d.pickle' %(ep)), 'wb') as f:
+            try:
+                pickle.dump(traj, f)
+            except OSError as e:
+                logging.exception('Failed to dump the trajectory! %s', e)
+                pass
     return ep
 
 def get_world_name(config, id):

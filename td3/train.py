@@ -159,6 +159,7 @@ def initialize_policy(config, env, init_buffer=True):
         )
         policy = DynaTD3(
             model, model_optim,
+            training_config["model_update_per_step"],
             training_config["n_simulated_update"],
             actor, actor_optim,
             critic, critic_optim,
@@ -179,6 +180,7 @@ def initialize_policy(config, env, init_buffer=True):
         )
         policy = SMCPTD3(
             model, model_optim,
+            training_config["model_update_per_step"],
             training_config["horizon"],
             training_config["num_particle"],
             actor, actor_optim,
@@ -193,7 +195,7 @@ def initialize_policy(config, env, init_buffer=True):
             head=MLP(input_dim, training_config['encoder_num_layers'], training_config['encoder_hidden_layer_size']),
         ).to(device)
         safe_critic_optim = torch.optim.Adam(
-            critic.parameters(), 
+            safe_critic.parameters(), 
             lr=training_config['critic_lr']
         )
         policy = TD3(
@@ -232,6 +234,7 @@ def train(env, policy, buffer, config):
     training_config = config["training_config"]
 
     save_path, writer = initialize_logging(config)
+    print("    >>>> initialized logging")
     
     if env_config["use_condor"]:
         collector = CondorCollector(policy, env, buffer, config)
@@ -252,12 +255,13 @@ def train(env, policy, buffer, config):
     val_steps = list(range(0, training_args["max_step"], training_config["val_interval"]))
     best_val_results = None
     while n_steps < training_args["max_step"]:
-        if len(val_steps) > 0 and val_steps[0] <= n_steps and training_config["validation"]:
-            print(">>>>>>>> Validating at step %d" %n_steps)
-            val_results = collector.set_validation(n_steps)  # This will collect the last validation results
+        val_results = None
+        if len(val_steps) > 0 and val_steps[0] <= n_steps:
+            policy.save(save_path, "policy_%d" %(n_steps))
+            if training_config["validation"]:
+                print(">>>>>>>> Validating at step %d" %n_steps)
+                val_results = collector.set_validation(n_steps)  # This will collect the last validation results
             val_steps.pop(0)
-        else:
-            val_results = None
             
         # Linear decaying exploration noise from "start" -> "end"
         policy.exploration_noise = \
