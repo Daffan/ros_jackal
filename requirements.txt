@@ -1,9 +1,6 @@
 gym==0.17.3
 GPUtil==1.4.0
 defusedxml==0.6.0
-pyquaternion==0.9.9
 rospkg==1.2.8
-tianshou==0.3.0
 netifaces==0.10.9
 tensorboardX==2.2
-opencv-python==4.2.0.34
