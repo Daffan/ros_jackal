@@ -36,6 +36,10 @@ def main(args):
 
     policy, _ = initialize_policy(config, env, init_buffer=False)
     policy = load_policy(policy)
+    
+    if config["training_config"]["MPC"]:
+        policy.exploration_noise = config["training_config"]["exploration_noise_end"]
+        print("exploration_noise: %.2f" %(policy.exploration_noise))
 
     print(">>>>>>>>>>>>>> Running on %s <<<<<<<<<<<<<<<<" %(world_name))
     ep = 0

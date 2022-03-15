@@ -180,9 +180,9 @@ def initialize_policy(config, env, init_buffer=True):
         )
         policy = SMCPTD3(
             model, model_optim,
-            training_config["model_update_per_step"],
             training_config["horizon"],
             training_config["num_particle"],
+            training_config["model_update_per_step"],
             actor, actor_optim,
             critic, critic_optim,
             action_range=[action_space_low, action_space_high],
@@ -243,7 +243,7 @@ def train(env, policy, buffer, config):
 
     training_args = training_config["training_args"]
     print("    >>>> Pre-collect experience")
-    collector.collect(n_step=training_config['pre_collect'])
+    collector.collect(n_steps=training_config['pre_collect'])
     print("    >>>> Start training")
 
     n_steps = 0
@@ -252,24 +252,13 @@ def train(env, policy, buffer, config):
     epinfo_buf = collections.deque(maxlen=300)
     world_ep_buf = collections.defaultdict(lambda: collections.deque(maxlen=20))
     t0 = time.time()
-    val_steps = list(range(0, training_args["max_step"], training_config["val_interval"]))
-    best_val_results = None
+    
     while n_steps < training_args["max_step"]:
-        val_results = None
-        if len(val_steps) > 0 and val_steps[0] <= n_steps:
-            policy.save(save_path, "policy_%d" %(n_steps))
-            if training_config["validation"]:
-                print(">>>>>>>> Validating at step %d" %n_steps)
-                val_results = collector.set_validation(n_steps)  # This will collect the last validation results
-            val_steps.pop(0)
-            
         # Linear decaying exploration noise from "start" -> "end"
         policy.exploration_noise = \
             - (training_config["exploration_noise_start"] - training_config["exploration_noise_end"]) \
             *  n_steps / training_args["max_step"] + training_config["exploration_noise_start"]
-        steps, epinfo = collector.collect(training_args["collect_per_step"])
-        if training_config["validation"]:
-            collector.collect_validation()
+        steps, epinfo = collector.collect(n_steps=training_args["collect_per_step"])
         
         n_steps += steps
         n_iter += 1
@@ -301,26 +290,7 @@ def train(env, policy, buffer, config):
             "Exploration_noise": policy.exploration_noise,
         }
         log.update(loss_info)
-        logging.info(pformat(log))
-        
-        if val_results is not None:
-            val_step = val_results.pop("val_step")
-            for k in val_results.keys():
-                writer.add_scalar('validation/' + k, val_results[k], global_step=val_step)
-            if best_val_results is None or val_results["val_success"] >= best_val_results["val_success"]:
-                BASE_PATH = os.getenv('BUFFER_PATH')
-                src = join(BASE_PATH, "policy_%d" %val_step)
-                dst = join(save_path, "best_policy")
-                assert exists(src + "_actor")
-                shutil.copyfile(src + "_actor", dst + "_actor")
-                shutil.copyfile(src + "_noise", dst + "_noise")
-                if exists(src + "_model"):
-                    shutil.copyfile(src + "_model", dst + "_model")
-                best_val_results = val_results
-                best_val_results["val_step"] = val_step
-        
-        if best_val_results is not None:
-            logging.info(pformat(best_val_results))
+        print(pformat(log))
 
         if n_iter % training_config["log_intervals"] == 0:
             for k in log.keys():
@@ -340,7 +310,7 @@ def train(env, policy, buffer, config):
         BASE_PATH = os.getenv('BUFFER_PATH')
         shutil.rmtree(BASE_PATH, ignore_errors=True)  # a way to force all the actors to stop
     else:
-        train_envs.close()
+        env.close()
 
 if __name__ == "__main__":
     torch.set_num_threads(8)
@@ -356,7 +326,7 @@ if __name__ == "__main__":
     seed(config)
     print(">>>>>>>> Creating the environments")
     train_envs = initialize_envs(config)
-    env = train_envs if config["env_config"]["use_condor"] else train_envs.env[0]
+    env = train_envs if config["env_config"]["use_condor"] else train_envs
     
     print(">>>>>>>> Initializing the policy")
     policy, buffer = initialize_policy(config, env)

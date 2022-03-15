@@ -134,7 +134,8 @@ class JackalGazebo(gym.Env):
             collided=collided,
             goal_position=goal_pos,
             time=self.current_time - self.start_time,
-            success=success
+            success=success,
+            world=self.world_name
         )
         
         if done:

@@ -71,8 +71,8 @@ class DWAParamContinuous(JackalGazebo):
     
     def _reset_move_base(self):
         # reset the move_base
-        self.kill_move_base()
-        self.move_base = self.launch_move_base(goal_position=self.goal_position, base_local_planner=self.base_local_planner)
+        # self.kill_move_base()
+        # self.move_base = self.launch_move_base(goal_position=self.goal_position, base_local_planner=self.base_local_planner)
         self.move_base.reset_robot_in_odom()
         self._clear_costmap()
         self.move_base.set_global_goal()

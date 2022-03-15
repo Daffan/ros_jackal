@@ -1,7 +1,7 @@
 env_config:
   use_condor: True
   env_id: "motion_control_continuous_laser-v0"
-  seed: 13
+  seed: 15
   stack_frame: 1
   kwargs:
     world_name: "world_0.world"
@@ -18,7 +18,7 @@ env_config:
     init_position: [-2, 3, 1.57]
     goal_position: [0, 10, 0]
 
-    laser_clip: 2
+    laser_clip: 5
     min_v: -1
     max_v: 2
     min_w: -3.14
@@ -40,7 +40,7 @@ training_config:
   pre_collect: 4096
   log_intervals: 2
   validation: False
-  val_interval: 200000
+  val_interval: 1000000
 
   dyna_style: False
   n_simulated_update: 10
@@ -52,7 +52,7 @@ training_config:
 
   safe_rl: True
   safe_mode: "lagr" # span "lyapunov" or "lagr"
-  safe_lagr: 5
+  safe_lagr: 10
 
   policy_args:
     tau: 0.005
@@ -75,9 +75,11 @@ condor_config:
   # either static or dynamic
   # 50 static worlds
   worlds: [153, 43, 20, 209, 74, 274, 127, 192, 56, 291, 242, 29, 238, 170, 286, 52, 243, 157, 116, 131, 23, 276, 231, 273, 51, 247, 266, 110, 166, 225, 207, 236, 280, 35, 49, 65, 105, 80, 67, 109, 18, 177, 75, 195, 249, 26, 264, 83, 149, 176]
-  # test: 50 static worlds
-  test_worlds: [250, 292, 97, 162, 219, 125, 142, 289, 1, 106, 227, 79, 132, 31, 151, 220, 91, 228, 160, 145, 224, 152, 10, 252, 69, 174, 244, 208, 158, 214, 211, 37, 120, 271, 99, 21, 4, 5, 2, 32, 14, 96, 139, 212, 245, 84, 156, 128, 58, 48]
-  
+  # validation: 10 worlds
+  validation_worlds: [227, 292, 97, 162, 219, 125, 142, 289, 1, 106]
+  # test: 40 static worlds
+  test_worlds: [250, 79, 132, 31, 151, 220, 91, 228, 160, 145, 224, 152, 10, 252, 69, 174, 244, 208, 158, 214, 211, 37, 120, 271, 99, 21, 4, 5, 2, 32, 14, 96, 139, 212, 245, 84, 156, 128, 58, 48]
+   
   # 50 dynamic worlds
   # worlds: [500, 501, 502, 503, 504, 505, 506, 507, 508, 509, 510, 511, 512, 513, 514, 515, 516, 517, 518, 519, 520, 521, 522, 523, 524, 525, 526, 527, 528, 529, 530, 531, 532, 533, 534, 535, 536, 537, 538, 539, 540, 541, 542, 543, 544, 545, 546, 547, 548, 549]
   # test: 50 dynamic worlds

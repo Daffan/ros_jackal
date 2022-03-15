@@ -14,11 +14,63 @@ BUFFER_PATH = os.getenv('BUFFER_PATH')
 class LocalCollector(object):
     def __init__(self, policy, env, replaybuffer):
         self.policy = policy
+        self.env = env
         self.buffer = replaybuffer
+        
+        self.last_obs = None
+        
+        self.global_episodes = 0
+        self.global_steps = 0
 
     def collect(self, n_steps):
-        raise NotImplementedError
+        n_steps_curr = 0
+        env = self.env
+        policy = self.policy
+        results = []
         
+        ep_rew = 0
+        ep_len = 0
+        
+        if self.last_obs is not None:
+            obs = self.last_obs
+        else:
+            obs = env.reset()
+        while n_steps_curr < n_steps:
+            act = policy.select_action(obs)
+            obs_new, rew, done, info = env.step(act)
+            obs = obs_new
+            ep_rew += rew
+            ep_len += 1
+            n_steps_curr += 1
+            self.global_steps += 1
+            
+            world = int(info['world'].split(
+                "_")[-1].split(".")[0])  # task index
+            collision_reward = -int(info['collided'])
+            if self.policy.safe_rl:
+                self.buffer.add(obs, act,
+                                obs_new, rew,
+                                done, world, collision_reward)
+            else:
+                self.buffer.add(obs, act,
+                                obs_new, rew,
+                                done, world)
+            if done:
+                obs = env.reset()
+                results.append(dict(
+                    ep_rew=ep_rew, 
+                    ep_len=ep_len, 
+                    success=info['success'], 
+                    ep_time=info['time'], 
+                    world=info['world'], 
+                    collision=info['collision']
+                ))
+                ep_rew = 0
+                ep_len = 0
+                self.global_episodes += 1
+            print("n_episode: %d, n_steps: %d" %(self.global_episodes, self.global_steps), end="\r")
+        self.last_obs = obs
+        return n_steps_curr, results
 
 class CondorCollector(object):
     def __init__(self, policy, env, replaybuffer, config):
@@ -31,13 +83,8 @@ class CondorCollector(object):
         self.buffer = replaybuffer
         
         self.num_actor = config['condor_config']['num_actor']
-        self.validation_worlds = ["BARN/world_%d.world" %w if isinstance(w, int) else w \
-            for w in config['condor_config']['validation_worlds']]
         self.ids = list(range(self.num_actor))
-        self.validation_ids = [i + self.num_actor for i in list(range(2 * len(self.validation_worlds)))]
         self.ep_count = [0] * self.num_actor
-        self.validation_results = None
-        self.validation_step = None
 
         if not exists(BUFFER_PATH):
             os.mkdir(BUFFER_PATH)
@@ -92,7 +139,7 @@ class CondorCollector(object):
                 join(BUFFER_PATH, "%s_model" %name)
             )
 
-    def collect(self, n_step):
+    def collect(self, n_steps):
         """ This method searches the buffer folder and collect all the saved trajectories
         """
         # collect happens after policy is updated
@@ -100,7 +147,7 @@ class CondorCollector(object):
         steps = 0
         results = []
         
-        while steps < n_step:
+        while steps < n_steps:
             time.sleep(1)
             np.random.shuffle(self.ids)
             for id in self.ids:
@@ -110,65 +157,6 @@ class CondorCollector(object):
                 for t in id_trajs:
                     self.buffer_expand(t)
         return steps, results
-    
-    def collect_validation(self):
-        assert self.validation_results is not None, "call set_validation first"
-        for id in self.validation_ids:
-            id_steps, id_trajs, id_results = self.collect_worker_traj(id, skip_first=False)
-            # dict list to dict of dict list
-            for i in range(len(id_results)):
-                w = id_results[i]["world"]
-                assert w in self.validation_worlds, w
-                id_results[i].pop("world")
-                self.validation_results[w].append(id_results[i])
-        num_trials = self.config["condor_config"]["validation_trials"]
-        for k in self.validation_worlds:
-            if len(self.validation_results[k]) < num_trials:
-                return None
-                
-        # make sure workers don't collect trajs anymore
-        if os.path.exists(join(BUFFER_PATH, "validation_policy_actor")):
-            os.remove(join(BUFFER_PATH, "validation_policy_actor"))
-        if os.path.exists(join(BUFFER_PATH, "validation_policy_noise")):
-            os.remove(join(BUFFER_PATH, "validation_policy_noise"))
-        if os.path.exists(join(BUFFER_PATH, "validation_policy_model")):
-            os.remove(join(BUFFER_PATH, "validation_policy_model"))
-        
-        # all validation collected
-        ep_rew = []
-        ep_len = []
-        success = []
-        ep_time = []
-        collision = []
-        for vv in self.validation_results.values():
-            ep_rew.append(np.mean([v["ep_rew"] for v in vv][-num_trials:]))
-            ep_len.append(np.mean([v["ep_len"] for v in vv][-num_trials:]))
-            success.append(np.mean([v["success"] for v in vv][-num_trials:]))
-            ep_time.append(np.mean([v["ep_time"] for v in vv][-num_trials:]))
-            collision.append(np.mean([v["collision"] for v in vv][-num_trials:]))
-        return dict(
-            val_ep_rew=np.mean(ep_rew),
-            val_ep_len=np.mean(ep_len),
-            val_success=np.mean(success),
-            val_ep_time=np.mean(ep_time),
-            val_collision=np.mean(collision),
-            val_step=self.validation_step
-        )
-            
-    def set_validation(self, n_steps):
-        val_results = None
-        while val_results is None and n_steps > 0:
-            time.sleep(1)
-            val_results = self.collect_validation()
-            
-            # This will clear the trajs from actors (prevent disk exceeded) 
-            for i in self.ids:
-                self.collect_worker_traj(i)
-        self.validation_step = n_steps
-        self.update_policy("policy_%d" %n_steps)
-        self.update_policy("validation_policy")
-        self.validation_results = defaultdict(list)
-        return val_results
                 
     def collect_worker_traj(self, id, skip_first=True):
         steps = 0

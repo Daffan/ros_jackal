@@ -171,6 +171,7 @@ if __name__ == "__main__":
     acc_mean_return = []
     acc_mean_success = []
     acc_mean_time = []
+    acc_mean_survival_time = []
     acc_mean_metrics = []
     acc_mean_collision = []
     
@@ -201,7 +202,9 @@ if __name__ == "__main__":
                 mean_success = np.mean([t[2] for t in results[world]])
                 mean_all_time = np.mean([t[3] for t in results[world]])
                 times = [t[3] for t in results[world] if t[2] > 0]
+                s_times = [t[3] for t in results[world] if t[2] < 1]
                 mean_time = np.mean(times) if len(times) > 0 else 0
+                mean_s_time = np.mean(s_times) if len(s_times) > 0 else 1000
                 mean_collision = np.mean([t[4] for t in results[world]])
                 mean_recovery = np.mean([t[5] for t in results[world]])
                 
@@ -215,16 +218,18 @@ if __name__ == "__main__":
                 mean_metrics = np.mean(success * path_length / 2 / ep_time)
                 
                 
-                print("finishing world %d: %.4f, %.4f, %.4f, %.4f, %.4f, %.4f, %.4f, %.4f, support %d/%d" \
-                    %(world, mean_return, mean_length, mean_success, mean_time, mean_collision, mean_recovery, mean_all_time, mean_metrics, len(times), len(results[world])))
+                print("finishing world %d: %.4f, %.4f, %.4f, %.4f, %.4f, %.4f, %.4f, %.4f, %.4f, support %d/%d" \
+                    %(world, mean_return, mean_length, mean_success, mean_time, mean_s_time, mean_collision, mean_recovery, mean_all_time, mean_metrics, len(times), len(results[world])))
                 
                 acc_mean_return.append(mean_return)
                 acc_mean_success.append(mean_success)
                 if mean_time > 0:
                     acc_mean_time.append(mean_time)
+                if mean_s_time < 1000:
+                    acc_mean_survival_time.append(mean_s_time)
                 acc_mean_metrics.append(mean_metrics)
                 acc_mean_collision.append(mean_collision)
-                print("mean return: %.4f, success: %.4f, time: %.4f, metrics: %.4f, support: %d, collision: %.4f" %(np.mean(acc_mean_return), np.mean(acc_mean_success), np.mean(acc_mean_time), np.mean(acc_mean_metrics), len(acc_mean_return), np.mean(acc_mean_collision)))
+                print("mean return: %.4f, success: %.4f, time: %.4f, suvival_time: %.4f, metrics: %.4f, support: %d, collision: %.4f" %(np.mean(acc_mean_return), np.mean(acc_mean_success), np.mean(acc_mean_time), np.mean(acc_mean_survival_time), np.mean(acc_mean_metrics), len(acc_mean_return), np.mean(acc_mean_collision)))
 
                 continue
             tmp_jobs.append(j)
@@ -236,7 +241,7 @@ if __name__ == "__main__":
         
     with open(join(model_dir, "test_results.pickle"), "wb") as f:
         pickle.dump(results, f)
-    print("mean return: %.4f, success: %.4f, time: %.4f, metrics: %.4f, support: %d, collision: %.4f" %(np.mean(acc_mean_return), np.mean(acc_mean_success), np.mean(acc_mean_time), np.mean(acc_mean_metrics), len(acc_mean_return), np.mean(acc_mean_collision)))
+    print("mean return: %.4f, success: %.4f, time: %.4f, suvival_time: %.4f, metrics: %.4f, support: %d, collision: %.4f" %(np.mean(acc_mean_return), np.mean(acc_mean_success), np.mean(acc_mean_time), np.mean(acc_mean_survival_time), np.mean(acc_mean_metrics), len(acc_mean_return), np.mean(acc_mean_collision)))
 
     shutil.rmtree(buffer_path, ignore_errors=True)
             
