@@ -1,14 +1,13 @@
-from actor import initialize_actor, write_buffer
+from actor import initialize_actor, write_buffer, _debug_print_robot_status
 from train import initialize_policy
 import os
-from os.path import dirname, abspath, join
+from os.path import dirname, abspath
 import gym
-import torch
 import argparse
 
 import sys
 sys.path.append(dirname(dirname(abspath(__file__))))
-from envs.wrappers import ShapingRewardWrapper, StackFrame
+from envs.wrappers import StackFrame
 
 BUFFER_PATH = os.getenv('BUFFER_PATH')
 
@@ -21,7 +20,7 @@ def get_world_name(config, id):
 
 def load_policy(policy):
     policy.load(BUFFER_PATH, "policy")
-    policy.exploration_noise = 0
+    policy.exploration_noise = 0.0
     return policy
 
 def main(args):
@@ -33,18 +32,20 @@ def main(args):
 
     env_config["kwargs"]["world_name"] = world_name
     env = gym.make(env_config["env_id"], **env_config["kwargs"])
-    if env_config["shaping_reward"]:
-        env = ShapingRewardWrapper(env)
     env = StackFrame(env, stack_frame=env_config["stack_frame"]) 
 
-    policy, _ = initialize_policy(config, env)
+    policy, _ = initialize_policy(config, env, init_buffer=False)
     policy = load_policy(policy)
+    
+    if config["training_config"]["MPC"]:
+        policy.exploration_noise = config["training_config"]["exploration_noise_end"]
+        print("exploration_noise: %.2f" %(policy.exploration_noise))
 
     print(">>>>>>>>>>>>>> Running on %s <<<<<<<<<<<<<<<<" %(world_name))
     ep = 0
+    bad_traj_count = 0
     while ep < num_trials:
         obs = env.reset()
-        ep += 1
         traj = []
         done = False
         while not done:
@@ -57,9 +58,15 @@ def main(args):
             traj.append([None, None, rew, done, info])  # For testing, we only need rew and ep_length
             obs = obs_new
 
-            # _debug_print_robot_status(env, len(traj), rew)
-
-        write_buffer(traj, ep, args.id)
+            _debug_print_robot_status(env, len(traj), rew, actions)
+        
+        time_per_step = info['time'] / len(traj)  # sometimes, the simulation runs very slow, need restart
+        if len(traj) >= 1 and time_per_step < (0.05 + config["env_config"]["kwargs"]["time_step"]):
+            ep = write_buffer(traj, args.id)
+        else:  # for some reason, the progress might just dead or always give fail traj with only 1 step
+            bad_traj_count += 1
+            if bad_traj_count >= 5:
+                break
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description = 'start an tester')

@@ -1,23 +1,21 @@
-from typing import Any, NamedTuple
 from gym.spaces import Box
 import numpy as np
 
 import rospy
 from geometry_msgs.msg import Twist
 
-from envs.dwa_base_envs import DWABase, DWABaseLaser, DWABaseCostmap, DWABaseCostmapResnet
+from envs.jackal_gazebo_envs import JackalGazebo, JackalGazeboLaser
 
-RANGE_DICT = {
-    "linear_velocity": [-0.2, 2],
-    "angular_velocity": [-3.14, 3.14],
-}
-
-class MotionControlContinuous(DWABase):
-    def __init__(self, **kwargs):
+class MotionControlContinuous(JackalGazebo):
+    def __init__(self, min_v=-1, max_v=2, min_w=-3.14, max_w=3.14, **kwargs):
+        self.action_dim = 2
         super().__init__(**kwargs)
         self._cmd_vel_pub = rospy.Publisher('/cmd_vel', Twist, queue_size=1)
-        self.params = None
-        # same as the parameters to tune
+        
+        self.range_dict = RANGE_DICT = {
+            "linear_velocity": [min_v, max_v],
+            "angular_velocity": [min_w, max_w],
+        }
         self.action_space = Box(
             low=np.array([RANGE_DICT["linear_velocity"][0], RANGE_DICT["angular_velocity"][0]]),
             high=np.array([RANGE_DICT["linear_velocity"][1], RANGE_DICT["angular_velocity"][1]]),
@@ -29,25 +27,19 @@ class MotionControlContinuous(DWABase):
         set_goal is replaced with make_plan
         """
         self.step_count = 0
-        # Reset robot in odom frame clear_costmap
-        self.gazebo_sim.unpause()
-        self.move_base.reset_robot_in_odom()
-        # Resets the state of the environment and returns an initial observation
-        self.gazebo_sim.reset()
-        self.move_base.make_plan()
-        self._clear_costmap()
-        self.start_time = rospy.get_time()
-        obs = self._get_observation()
-        self.gazebo_sim.pause()
         self.collision_count = 0
-        self.traj_pos = []
-        self.smoothness = 0
+        # Reset robot in odom frame clear_costmap
+        self.gazebo_sim.reset()
+        self.start_time = self.current_time = rospy.get_time()
+        pos, psi = self._get_pos_psi()
+        
+        self.gazebo_sim.unpause()
+        obs = self._get_observation(pos, psi, np.array([0, 0]))
+        self.gazebo_sim.pause()
+        
+        goal_pos = np.array([self.world_frame_goal[0] - pos.x, self.world_frame_goal[1] - pos.y])
+        self.last_goal_pos = goal_pos
         return obs
-
-    def _get_info(self):
-        info = dict(success=self._get_success(), params=self.params)
-        info.update(super()._get_info())
-        return info
 
     def _take_action(self, action):
         linear_speed, angular_speed = action
@@ -57,21 +49,10 @@ class MotionControlContinuous(DWABase):
 
         self.gazebo_sim.unpause()
         self._cmd_vel_pub.publish(cmd_vel_value)
-        self.move_base.make_plan()
-        rospy.sleep(self.time_step)
+        super()._take_action(action)  # this will wait util next time step
         self.gazebo_sim.pause()
 
 
-class MotionControlContinuousLaser(MotionControlContinuous, DWABaseLaser):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-
-
-class MotionControlContinuousCostmap(MotionControlContinuous, DWABaseCostmap):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-
-
-class MotionControlContinuousCostmapResnet(MotionControlContinuous, DWABaseCostmapResnet):
+class MotionControlContinuousLaser(MotionControlContinuous, JackalGazeboLaser):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
