@@ -2,7 +2,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import transformers
-from trajectory_gpt2 import GPT2Model
+from td3.trajectory_gpt2 import GPT2Model
 
 class Encoder(nn.Module):
     """
