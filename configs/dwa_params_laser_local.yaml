@@ -1,0 +1,78 @@
+env_config:
+  use_condor: False
+  env_id: "dwa_param_continuous_laser-v0"
+  seed: 13
+  stack_frame: 1
+  kwargs:
+    param_init: [2, 3.14, 12, 40, 0.75, 1, 0.3]
+    param_list: ["TrajectoryPlannerROS/max_vel_x", 
+                 "TrajectoryPlannerROS/max_vel_theta", 
+                 "TrajectoryPlannerROS/vx_samples",
+                 "TrajectoryPlannerROS/vtheta_samples",
+                 "TrajectoryPlannerROS/path_distance_bias",
+                 "TrajectoryPlannerROS/goal_distance_bias", 
+                 "inflation_radius"]
+    world_name: "world_0.world"
+    gui: false
+    verbose: false
+    max_step: 100
+    max_collision: 100
+    time_step: 1
+    laser_clip: 2
+    slack_reward: 0
+    collision_reward: -1
+    failure_reward: 0
+    success_reward: 20
+    init_position: [-2, 2, 1.57]
+    goal_position: [0, 10, 0]
+
+training_config:
+  algorithm: "TD3"
+  network: "mlp"
+  encoder: "mlp"
+  buffer_size: 200000
+  actor_lr: 0.00001
+  critic_lr: 0.00002
+  num_layers: 1
+  hidden_layer_size: 512
+  encoder_num_layers: 2
+  encoder_hidden_layer_size: 512
+  exploration_noise_start: 0.1
+  exploration_noise_end: 0.0999
+  pre_collect: 1024
+  log_intervals: 2
+
+  dyna_style: False
+  n_simulated_update: 10
+  model_lr: 0.0001
+
+  MPC: False
+  horizon: 10
+  num_particle: 256
+
+  safe_rl: False # for safe RL
+  safe_mode: "lagr" # for safe RL
+  safe_lagr: 2. # for safe RL
+
+  policy_args:
+    tau: 0.005
+    gamma: 0.99
+    policy_noise: 0.2
+    update_actor_freq: 2
+    noise_clip: 0.5
+    n_step: 4
+
+  training_args:
+    max_step: 1000000
+    collect_per_step: 1024
+    update_per_step: 1024
+    batch_size: 128
+
+condor_config:
+  test_object: "dwa"  # or "dwa"
+  num_actor: 100
+  worlds: [153, 43, 20, 209, 74, 274, 127, 192, 56, 291, 242, 29, 238, 170, 286, 52, 243, 157, 116, 131, 23, 276, 231, 273, 51, 247, 266, 110, 166, 225, 207, 236, 280, 35, 49, 65, 105, 80, 67, 109, 18, 177, 75, 195, 249, 26, 264, 83, 149, 176]  # 50 worlds
+  validation_worlds: [227, 292, 97, 162, 219, 125, 142, 289, 1, 106]
+  # test: 50 static worlds
+  test_worlds: [250, 79, 132, 31, 151, 220, 91, 228, 160, 145, 224, 152, 10, 252, 69, 174, 244, 208, 158, 214, 211, 37, 120, 271, 99, 21, 4, 5, 2, 32, 14, 96, 139, 212, 245, 84, 156, 128, 58, 48]
+  num_trials: 10
