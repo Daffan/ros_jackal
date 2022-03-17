@@ -6,7 +6,6 @@ from gazebo_msgs.msg import ModelState
 from gazebo_msgs.srv import SetModelState, GetModelState
 from geometry_msgs.msg import Quaternion, Twist
 from sensor_msgs.msg import LaserScan
-from pyquaternion import Quaternion as qt
 from std_msgs.msg import Bool
 
 def create_model_state(x, y, z, angle):

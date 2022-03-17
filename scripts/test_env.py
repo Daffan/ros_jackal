@@ -28,7 +28,6 @@ def main():
         goal_position=[0, 10, 0]
     )
     """
-    """
     env = gym.make(
         id='dwa_param_continuous_laser-v0', 
         param_init=[0.5, 1.57, 6, 20, 0.75, 1, 0.3],
@@ -39,10 +38,10 @@ def main():
                       "TrajectoryPlannerROS/path_distance_bias", 
                       "TrajectoryPlannerROS/goal_distance_bias", 
                       "inflation_radius"],
-        world_name='BARN/world_399.world',
-        gui=True,
-        init_position=[-2.25, 2.5, 1.732],
-        goal_position=[-2.25, 14.5, 0]
+        world_name='BARN/world_0.world',
+        gui=False,
+        init_position=[-2, 3, 1.57],
+        goal_position=[0, 10, 0]
     )
     """
     env = gym.make(
@@ -58,6 +57,7 @@ def main():
         failure_reward=-50,
         max_collision=0
     )
+    """
     env = ShapingRewardWrapper(env)
     env.reset()
     done  = False
