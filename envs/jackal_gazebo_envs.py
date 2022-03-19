@@ -108,7 +108,7 @@ class JackalGazebo(gym.Env):
         flip = pos.z > 0.1  # robot flip
         
         goal_pos = np.array([self.world_frame_goal[0] - pos.x, self.world_frame_goal[1] - pos.y])
-        success = np.linalg.norm(goal_pos) < 0.4
+        success = pos.y > 11 # np.linalg.norm(goal_pos) < 0.4
         
         timeout = self.step_count >= self.max_step
         

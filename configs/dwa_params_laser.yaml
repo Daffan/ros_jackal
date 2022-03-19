@@ -1,10 +1,10 @@
 env_config:
   use_condor: True
   env_id: "dwa_param_continuous_laser-v0"
-  seed: 13
+  seed: 15
   stack_frame: 1
   kwargs:
-    param_init: [2, 3.14, 12, 40, 0.75, 1, 0.3]
+    param_init: [0.5, 1.57, 6, 20, 0.75, 1, 0.3]
     param_list: ["TrajectoryPlannerROS/max_vel_x", 
                  "TrajectoryPlannerROS/max_vel_theta", 
                  "TrajectoryPlannerROS/vx_samples",
@@ -16,15 +16,15 @@ env_config:
     gui: false
     verbose: false
     max_step: 100
-    max_collision: 1
+    max_collision: 100
     time_step: 1
     laser_clip: 2
     slack_reward: 0
-    collision_reward: -1
-    failure_reward: 0
+    collision_reward: 0
+    failure_reward: -100
     success_reward: 20
     init_position: [-2, 2, 1.57]
-    goal_position: [0, 10, 0]
+    goal_position: [0, 15, 0]
 
 training_config:
   algorithm: "TD3"
@@ -37,12 +37,11 @@ training_config:
   hidden_layer_size: 512
   encoder_num_layers: 1
   encoder_hidden_layer_size: 512
-  exploration_noise_start: 0.1
-  exploration_noise_end: 0.0999
+  exploration_noise_start: 0.5
+  exploration_noise_end: 0.1
   pre_collect: 4096
   log_intervals: 2
-  validation: False
-  val_interval: 1000000
+  reward_norm: True
 
   dyna_style: False
   n_simulated_update: 10
@@ -58,7 +57,7 @@ training_config:
 
   policy_args:
     tau: 0.005
-    gamma: 0.99
+    gamma: 0.95
     policy_noise: 0.2
     update_actor_freq: 2
     noise_clip: 0.5
@@ -66,15 +65,14 @@ training_config:
 
   training_args:
     max_step: 4000000
-    collect_per_step: 4096
+    collect_per_step: 1024
     update_per_step: 1024
     batch_size: 128
 
 condor_config:
-  test_object: "dwa"  # or "dwa"
-  num_actor: 100
-  worlds: [153, 43, 20, 209, 74, 274, 127, 192, 56, 291, 242, 29, 238, 170, 286, 52, 243, 157, 116, 131, 23, 276, 231, 273, 51, 247, 266, 110, 166, 225, 207, 236, 280, 35, 49, 65, 105, 80, 67, 109, 18, 177, 75, 195, 249, 26, 264, 83, 149, 176]  # 50 worlds
-  validation_worlds: [227, 292, 97, 162, 219, 125, 142, 289, 1, 106]
+  test_object: "local"  # or "dwa"
+  num_actor: 250
+  worlds: [54, 94, 156, 68, 52, 101, 40, 135, 51, 42, 75, 67, 18, 53, 87, 36, 28, 61, 233, 25, 35, 20, 34, 79, 108, 46, 65, 90, 6, 73, 70, 10, 29, 167, 15, 31, 77, 116, 241, 155, 194, 99, 56, 149, 38, 261, 239, 234, 60, 173, 247, 178, 291, 16, 9, 21, 169, 257, 148, 296, 151, 259, 102, 145, 130, 205, 121, 105, 43, 242, 213, 171, 62, 202, 293, 224, 225, 152, 111, 55, 125, 200, 161, 1, 136, 106, 286, 139, 244, 230, 222, 238, 170, 267, 26, 132, 124, 23, 59, 3, 97, 119, 89, 12, 164, 39, 236, 263, 81, 188, 84, 11, 268, 192, 122, 22, 253, 219, 216, 137, 85, 195, 206, 212, 4, 274, 91, 248, 44, 131, 203, 63, 80, 37, 110, 50, 74, 120, 128, 249, 30, 14, 103, 49, 154, 82, 2, 143, 158, 147, 235, 83, 157, 142, 187, 185, 288, 45, 140, 271, 160, 146, 109, 223, 126, 98, 252, 134, 272, 115, 71, 117, 255, 141, 174, 33, 245, 92, 295, 281, 186, 260, 7, 166, 196, 66, 113, 153, 227, 107, 199, 298, 278, 114, 72, 165, 228, 176, 24, 162, 198, 180, 285, 232, 243, 207, 190, 262, 275, 172, 179, 269, 127, 86, 183, 273, 287, 215, 266, 95, 5, 299, 279, 13, 250, 96, 197, 177, 58, 289, 211, 220, 182, 282, 210, 280, 251, 283, 217, 276, 292, 221, 204, 191, 181, 209, 297, 264, 231, 254]
   # test: 50 static worlds
-  test_worlds: [250, 79, 132, 31, 151, 220, 91, 228, 160, 145, 224, 152, 10, 252, 69, 174, 244, 208, 158, 214, 211, 37, 120, 271, 99, 21, 4, 5, 2, 32, 14, 96, 139, 212, 245, 84, 156, 128, 58, 48]
+  test_worlds: [0, 8, 17, 19, 27, 32, 41, 47, 48, 57, 64, 69, 76, 78, 88, 93, 100, 104, 112, 118, 123, 129, 133, 138, 144, 150, 159, 163, 168, 175, 184, 189, 193, 201, 208, 214, 218, 226, 229, 237, 240, 246, 256, 258, 265, 270, 277, 284, 290, 294]
   num_trials: 10
