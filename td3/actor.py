@@ -18,6 +18,9 @@ from envs import registration
 from envs.wrappers import ShapingRewardWrapper, StackFrame
 
 BUFFER_PATH = os.getenv('BUFFER_PATH')
+os.environ["JACKAL_LASER"] = "1"
+os.environ["JACKAL_LASER_MODEL"] = "ust10"
+os.environ["JACKAL_LASER_OFFSET"] = "-0.065 0 0.01"
 
 def initialize_actor(id):
     rospy.logwarn(">>>>>>>>>>>>>>>>>> actor id: %s <<<<<<<<<<<<<<<<<<" %(str(id)))

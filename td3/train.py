@@ -21,8 +21,10 @@ from envs import registration
 from envs.wrappers import ShapingRewardWrapper, StackFrame
 from td3.information_envs import InfoEnv
 from td3.net import MLP, CNN
-from td3.td3 import Actor, Critic, TD3, ReplayBuffer
+from td3.rl import Actor, Critic, TD3, ReplayBuffer
 from td3.collector import CondorCollector, LocalCollector
+
+torch.set_num_threads(8)
 
 def initialize_config(config_path, save_path):
     # Load the config files
@@ -139,7 +141,7 @@ def train(env, policy, buffer, config):
 
     training_args = training_config["training_args"]
     print("    >>>> Pre-collect experience")
-    collector.collect(n_step=training_config['pre_collect'])
+    collector.collect(n_steps=training_config['pre_collect'])
 
     n_steps = 0
     n_iter = 0
@@ -223,7 +225,7 @@ if __name__ == "__main__":
     seed(config)
     print(">>>>>>>> Creating the environments")
     train_envs = initialize_envs(config)
-    env = train_envs if config["env_config"]["use_condor"] else train_envs.env[0]
+    env = train_envs # if config["env_config"]["use_condor"] else train_envs.env[0]
     
     print(">>>>>>>> Initializing the policy")
     policy, buffer = initialize_policy(config, env)

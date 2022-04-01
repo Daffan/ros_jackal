@@ -173,7 +173,7 @@ class DWABase(gym.Env):
         if d < 0.3:  # minimum distance 0.3 meter 
             rew += self.collision_reward / (d + 0.05)
         smoothness = self._compute_angle(len(self.traj_pos) - 1)
-        rew += self.smoothness_reward * smoothness
+        # rew += self.smoothness_reward * smoothness
         self.smoothness += smoothness
         return rew
 
