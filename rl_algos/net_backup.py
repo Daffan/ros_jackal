@@ -3,7 +3,7 @@ import torch
 import transformers
 from torch import nn
 
-from td3.trajectory_gpt2 import GPT2Model
+from rl_algos.trajectory_gpt2 import GPT2Model
 
 
 class Thunk(nn.Module):

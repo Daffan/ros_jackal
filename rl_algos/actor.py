@@ -13,7 +13,7 @@ import rospy
 import argparse
 import logging
 
-from td3.train import initialize_policy
+from rl_algos.train import initialize_policy
 from envs import registration
 from envs.wrappers import StackFrame
 

@@ -108,7 +108,7 @@ class JackalGazebo(gym.Env):
         flip = pos.z > 0.1  # robot flip
         
         goal_pos = np.array([self.world_frame_goal[0] - pos.x, self.world_frame_goal[1] - pos.y])
-        success = pos.y > 11 # np.linalg.norm(goal_pos) < 0.4
+        success = np.linalg.norm(goal_pos) < 0.4
         
         timeout = self.step_count >= self.max_step
         
@@ -140,7 +140,7 @@ class JackalGazebo(gym.Env):
         
         if done:
             bn, nn = self.gazebo_sim.get_bad_vel_num()
-            info.update({"recovery": 1.0 * bn / nn})
+            # info.update({"recovery": 1.0 * bn / nn})
 
         self.gazebo_sim.pause()
         return obs, rew, done, info

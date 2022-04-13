@@ -7,7 +7,7 @@ import argparse
 
 import sys
 sys.path.append(dirname(dirname(abspath(__file__))))
-from envs.wrappers import StackFrame
+from rl_algos.wrappers import StackFrame
 
 BUFFER_PATH = os.getenv('BUFFER_PATH')
 

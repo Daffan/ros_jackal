@@ -20,9 +20,9 @@ from tensorboardX import SummaryWriter
 sys.path.append(dirname(dirname(abspath(__file__))))
 from envs import registration
 from envs.wrappers import StackFrame
-from td3.net import *
-from td3.rl import Actor, Critic, TD3, ReplayBuffer, DynaTD3, Model, SMCPTD3
-from td3.collector import CondorCollector, LocalCollector
+from rl_algos.net import *
+from rl_algos.td3 import Actor, Critic, TD3, ReplayBuffer, DynaTD3, Model, SMCPTD3
+from rl_algos.collector import CondorCollector, LocalCollector
 
 def initialize_config(config_path, save_path):
     # Load the config files
