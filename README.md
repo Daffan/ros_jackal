@@ -54,9 +54,11 @@ catkin_make
 ```
 
 ## Train a deep RL navigation policy
+To train a navigation policy, you just need to specify a ```.yaml``` file that includes the parameters for specific experiment. For instance,
 ```
 python train.py --config configs/motion_laser.yaml
 ```
+We provide the full list of ```.yaml``` files used in our experiment in the end.
 
 ## Results
 Success rate of policies trained with different neural network architectures and history lengths in static (top) and dynamic-wall (bottom) environments.
