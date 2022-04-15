@@ -65,42 +65,42 @@ Success rate of policies trained with different neural network architectures and
 | **Static**     |                           |                           |              |
 |----------------|---------------------------|---------------------------|--------------|
 | History length | 1                         | 4                         | 8            |
-| MLP            | $\boldsymbol{65 \pm 4\%}$ | $57 \pm 7\%$              | $42 \pm 2\%$ |
-| GRU            | -                         | $51 \pm 2\%$              | $43 \pm 4\%$ |
-| CNN            | -                         | $55 \pm 4\%$              | $45 \pm 5\%$ |
-| Transformer    | -                         | $\boldsymbol{68 \pm 2\%}$ | $46 \pm 3\%$ |
+| MLP            | **65 ± 4\%**              | 57 ± 7\%                  | 42 ± 2\%     |
+| GRU            | -                         | 51 ± 2\%                  | 43 ± 4\%     |
+| CNN            | -                         | 55 ± 4\%                  | 45 ± 5\%     |
+| Transformer    | -                         | **68 ± 2\%**              | 46 ± 3\%     |
 
 | **Dynamic wall** |              |                           |                           |
 |------------------|--------------|---------------------------|---------------------------|
 | History length   | 1            | 4                         | 8                         |
-| MLP              | $67 \pm 7\%$ | $72 \pm 1\%$              | $69 \pm 4\%$              |
-| GRU              | -            | $\boldsymbol{82 \pm 4\%}$ | $\boldsymbol{78 \pm 5\%}$ |
-| CNN              | -            | $63 \pm 3\%$              | $43 \pm 3\%$              |
-| Transformer      | -            | $33 \pm 28\%$             | $15 \pm 13\%$             |
+| MLP              | 67 ± 7\%     | 72 ± 1\%                  | 69 ± 4\%                  |
+| GRU              | -            | **82 ± 4\%**              | **78 ± 5\%**              |
+| CNN              | -            | 63 ± 3\%                  | 43 ± 3\%                  |
+| Transformer      | -            | 33 ± 28\%                 | 15 ± 13\%                 |
 
 Success rate, survival time and traversal time of policies trained with different safe-RL methods, MPC with probabilistic transition model and DWA.
 
 | **Safe-RL method** | **MLP**                     | **Lagrangian**            | **MPC**         | **DWA**              |
 |--------------------|-----------------------------|---------------------------|-----------------|----------------------|
-| Success rate       | $65 \pm 4\%$                | $\boldsymbol{74 \pm 2\%}$ | $70 \pm 3\%$    | $43\%$               |   |
-| Survival time      | $8.0 \pm 1.5s$              | $16.2 \pm 2.5s$           | $55.7 \pm 4.9s$ | $\boldsymbol{88.6s}$ |   |
-| Traversal time     | $\boldsymbol{7.5 \pm 0.3s}$ | $8.6 \pm 0.2s$            | $24.7 \pm 2.0s$ | $38.5s$              |   |
+| Success rate       | 65 ± 4\%                    | **74 ± 2\%**              | 70 ± 3\%        | 43\%                 |
+| Survival time      | 8.0 ± 1.5s                  | 16.2 ± 2.5s               | 55.7 ± 4.9s     | **88.6s**            |
+| Traversal time     | **7.5 ± 0.3s**              | 8.6 ± 0.2s                | 24.7 ± 2.0s     | 38.5s                |
 
 Success rate of policies trained with different model-based methods and different number of transition samples
 
 | **Transition samples**   | **100k**                  | **500k**                  | **2000k**                 |
 |--------------------------|---------------------------|---------------------------|---------------------------|
-| MLP                      | $\boldsymbol{13 \pm 7\%}$ | $\boldsymbol{58 \pm 2\%}$ | $65 \pm 4\%$              |
-| Dyna-style deterministic | $8 \pm 2\%$               | $30 \pm 10\%$             | $66 \pm 5\%$              |
-| MPC deterministic        | $0 \pm 0\%$               | $21 \pm 10\%$             | $62 \pm 3\%$              |
-| Dyna-style probabilistic | $0 \pm 0\%$               | $48 \pm 4\%$              | $\boldsymbol{70 \pm 1\%}$ |
-| MPC probabilistic        | $0 \pm 0\%$               | $45 \pm 4\%$              | $\boldsymbol{70 \pm 3\%}$ |
+| MLP                      | **13 ± 7\%**              | **58 ± 2\%**              | 65 ± 4\%                  |
+| Dyna-style deterministic | 8 ± 2\%                   | 30 ± 10\%                 | 66 ± 5\%                  |
+| MPC deterministic        | 0 ± 0\%                   | 21 ± 10\%                 | 62 ± 3\%                  |
+| Dyna-style probabilistic | 0 ± 0\%                   | 48 ± 4\%                  | **70 ± 1\%**              |
+| MPC probabilistic        | 0 ± 0\%                   | 45 ± 4\%                  | **70 ± 3\%**              |
 
 Success rate of policies trained with different number of training environments
 
 | **Environments** | **5**        | **10**       | **50**       | **100**      | **250**       |
 |------------------|--------------|--------------|--------------|--------------|---------------|
-| Success rate     | $43 \pm 3\%$ | $54 \pm 8\%$ | $65 \pm 4\%$ | $72 \pm 6\%$ | $74 \pm 2 \%$ |
+| Success rate     | 43 ± 3\%     | 54 ± 8\%     | 65 ± 4\%     | 72 ± 6\%     | 74 ± 2 \%     |
 
 
 (See below for all the config files used to reproduce the experiments)
