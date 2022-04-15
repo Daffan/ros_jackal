@@ -63,19 +63,19 @@ int main(int _argc, char **_argv){
 
     // Create ROS node and init
     ros::NodeHandle n;
-    pub = n.advertise<std_msgs::Bool>("collision", 1000);
+    pub = n.advertise<std_msgs::Bool>("collision", 10);
 
     // Listen to Gazebo contacts topic
     gazebo::transport::SubscriberPtr sub = node->Subscribe("/gazebo/default/physics/contacts", forcesCb);
 
     // Listen to ROS for position
-    ros::Subscriber sub2 = n.subscribe("ground_truth/state", 1000, positionCb);
+    ros::Subscriber sub2 = n.subscribe("ground_truth/state", 10, positionCb);
 
     // Busy wait loop...replace with your own code as needed.
     // Busy wait loop...replace with your own code as needed.
     while (true)
     {
-        gazebo::common::Time::MSleep(20);
+        gazebo::common::Time::MSleep(100);
 
         // Spin ROS (needed for publisher) // (nope its actually for subscribers-calling callbacks ;-) )
         ros::spinOnce();

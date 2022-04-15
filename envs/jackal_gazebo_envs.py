@@ -1,12 +1,16 @@
 import gym
-import rospy
-import rospkg
 import time
 import numpy as np
 import os
 from os.path import join
 import subprocess
 from gym.spaces import Box
+
+try:  # make sure to create a fake environment without ros installed
+    import rospy
+    import rospkg
+except ModuleNotFoundError:
+    pass
 
 from envs.gazebo_simulation import GazeboSimulation
 
@@ -35,6 +39,7 @@ class JackalGazebo(gym.Env):
         # config
         self.gui = gui
         self.verbose = verbose
+        self.init_sim = init_sim
         
         # sim config
         self.world_name = world_name

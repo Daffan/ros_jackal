@@ -1,0 +1,76 @@
+env_config:
+  use_container: True
+  env_id: "motion_control_continuous_laser-v0"
+  seed: 14
+  stack_frame: 1   # span 1, 4, 8
+  kwargs:
+    world_name: "world_0.world"
+    gui: false
+    verbose: false
+    max_step: 400
+    time_step: 0.2
+    slack_reward: 0
+    collision_reward: -1
+    failure_reward: 0
+    success_reward: 20
+    goal_reward: 1
+    max_collision: 1
+    init_position: [-2, 3, 1.57]
+    goal_position: [0, 10, 0]
+
+    laser_clip: 5
+    min_v: -1
+    max_v: 2
+    min_w: -3.14
+    max_w: 3.14
+
+training_config:
+  algorithm: "TD3"
+  encoder: "mlp"  # span "mlp", "cnn", "rnn", "transformer"
+  buffer_size: 200000
+  actor_lr: 0.00001
+  critic_lr: 0.00002
+  # For head
+  num_layers: 1
+  hidden_layer_size: 512
+  # For encoder
+  encoder_num_layers: 2
+  encoder_hidden_layer_size: 512
+  exploration_noise_start: 0.1
+  exploration_noise_end: 0.0999
+  pre_collect: 4096
+  log_intervals: 2
+
+  dyna_style: False
+  n_simulated_update: 10
+  model_lr: 0.0001
+
+  MPC: False
+  horizon: 10
+  num_particle: 256
+
+  safe_rl: False # for safe RL
+  safe_mode: "lagr" # for safe RL
+  safe_lagr: 2. # for safe RL
+
+  policy_args:
+    tau: 0.005
+    gamma: 0.99
+    policy_noise: 0.2
+    update_actor_freq: 2
+    noise_clip: 0.5
+    n_step: 4
+
+  training_args:
+    max_step: 4000000
+    collect_per_step: 4096
+    update_per_step: 1024
+    batch_size: 128
+
+container_config:
+  # 5 container running in parallel
+  num_actor: 5
+  # 250 training static worlds
+  worlds: [0, 3, 6, 7, 8, 9, 11, 12, 13, 15, 16, 17, 18, 19, 20, 22, 23, 24, 25, 26, 27, 28, 29, 30, 33, 34, 35, 36, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 49, 50, 51, 52, 53, 54, 55, 56, 57, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 70, 71, 72, 73, 74, 75, 76, 77, 78, 80, 81, 82, 83, 85, 86, 87, 88, 89, 90, 92, 93, 94, 95, 98, 100, 101, 102, 103, 104, 105, 107, 108, 109, 110, 111, 112, 113, 114, 115, 116, 117, 118, 119, 121, 122, 123, 124, 126, 127, 129, 130, 131, 133, 134, 135, 136, 137, 138, 140, 141, 143, 144, 146, 147, 148, 149, 150, 153, 154, 155, 157, 159, 161, 163, 164, 165, 166, 167, 168, 169, 170, 171, 172, 173, 175, 176, 177, 178, 179, 180, 181, 182, 183, 184, 185, 186, 187, 188, 189, 190, 191, 192, 193, 194, 195, 196, 197, 198, 199, 200, 201, 202, 203, 204, 205, 206, 207, 209, 210, 213, 215, 216, 217, 218, 221, 222, 223, 225, 226, 229, 230, 231, 232, 233, 234, 235, 236, 237, 238, 239, 240, 241, 242, 243, 246, 247, 248, 249, 251, 253, 254, 255, 256, 257, 258, 259, 260, 261, 262, 263, 264, 265, 266, 267, 268, 269, 270, 272, 273, 274, 275, 276, 277, 278, 279, 280, 281, 282, 283, 284, 285, 286, 287, 288, 290, 291, 293, 294, 295, 296, 297, 298, 299]
+  # 50 test static worlds
+  test_worlds: [250, 292, 97, 162, 219, 125, 142, 289, 1, 106, 227, 79, 132, 31, 151, 220, 91, 228, 160, 145, 224, 152, 10, 252, 69, 174, 244, 208, 158, 214, 211, 37, 120, 271, 99, 21, 4, 5, 2, 32, 14, 96, 139, 212, 245, 84, 156, 128, 58, 48]

@@ -1,15 +1,17 @@
-import rospy
-import actionlib
 import numpy as np
 import scipy.signal
 
-import dynamic_reconfigure.client
-from robot_localization.srv import SetPose
-
-from std_srvs.srv import Empty
-from geometry_msgs.msg import Quaternion, Pose, PoseWithCovarianceStamped, Twist, PoseStamped
-from move_base_msgs.msg import MoveBaseGoal, MoveBaseAction
-from nav_msgs.msg import OccupancyGrid, Path, Odometry
+try:  # make sure to create a fake environment without ros installed
+    import rospy
+    import actionlib
+    import dynamic_reconfigure.client
+    from robot_localization.srv import SetPose
+    from std_srvs.srv import Empty
+    from geometry_msgs.msg import Quaternion, Pose, PoseWithCovarianceStamped, Twist, PoseStamped
+    from move_base_msgs.msg import MoveBaseGoal, MoveBaseAction
+    from nav_msgs.msg import OccupancyGrid, Path, Odometry
+except ModuleNotFoundError:
+    pass
 
 def _create_MoveBaseGoal(x, y, angle):
     """

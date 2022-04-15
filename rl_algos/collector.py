@@ -7,8 +7,24 @@ import logging
 import re
 import pickle
 import shutil
+import signal
+from multiprocessing import Pool
+
+try:
+    from spython.main import Client as client
+except:
+    pass
 
 BUFFER_PATH = os.getenv('BUFFER_PATH')
+
+def run_actor_in_container(id=0):
+    out = client.execute(
+        '/scratch/cluster/zifan/ros_jackal_image.sif',
+        ['/bin/bash', '/jackal_ws/src/ros_jackal/entrypoint.sh', 'python3', 'actor.py', '--id=%d' %id],
+        bind=['%s:%s' %(BUFFER_PATH, BUFFER_PATH), '%s:%s' %(os.getcwd(), "/jackal_ws/src/ros_jackal")],
+        options=["-i", "-n", "--network=none", "-p"], nv=True
+    )
+    return out
 
 
 class LocalCollector(object):
@@ -72,29 +88,37 @@ class LocalCollector(object):
         self.last_obs = obs
         return n_steps_curr, results
 
-class CondorCollector(object):
+
+class ContainerCollector(object):
     def __init__(self, policy, env, replaybuffer, config):
         '''
-        it's a fake tianshou Collector object with the same api
+        This collector create Singularty containers and collect tracjories from them
         '''
         super().__init__()
         self.config = config
         self.policy = policy
         self.buffer = replaybuffer
         
-        self.num_actor = config['condor_config']['num_actor']
+        self.num_actor = config['container_config']['num_actor']
         self.ids = list(range(self.num_actor))
         self.ep_count = [0] * self.num_actor
 
         if not exists(BUFFER_PATH):
             os.mkdir(BUFFER_PATH)
-        # save the current policy
+
+        # save the current policy to the buffer 
+        # which the actors in the containers can load from
         self.update_policy("policy")
+
         # save the env config the actor should read from
         shutil.copyfile(
             config["env_config"]["config_path"],
             join(BUFFER_PATH, "config.yaml")
         )
+
+        # These two env variable ensure ROS running correctly in the container
+        os.environ["ROS_HOSTNAME"] = "localhost"
+        os.environ["ROS_MASTER_URI"] = "http://localhost:11311"
 
     def buffer_expand(self, traj):
         for i in range(len(traj)):
@@ -102,17 +126,14 @@ class CondorCollector(object):
             state_next = traj[i+1][0] if i < len(traj)-1 else traj[i][0]
             world = int(info['world'].split(
                 "_")[-1].split(".")[0])  # task index
+
+            # For safeRL, separate the collision reward
             collision_reward = -int(info['collided'])
             assert collision_reward <= 0, "%.2f" %collision_reward
 
-            if self.policy.safe_rl:
-                self.buffer.add(state, action,
-                                state_next, reward,
-                                done, world, collision_reward)
-            else:
-                self.buffer.add(state, action,
-                                state_next, reward,
-                                done, world)
+            self.buffer.add(state, action,
+                            state_next, reward,
+                            done, world, collision_reward)
 
     def natural_keys(self, text):
         return int(re.split(r'(\d+)', text)[1])
@@ -143,12 +164,19 @@ class CondorCollector(object):
         """ This method searches the buffer folder and collect all the saved trajectories
         """
         # collect happens after policy is updated
+        # save the updated policy to the buffer
         self.update_policy("policy")
         steps = 0
         results = []
-        
+
         while steps < n_steps:
-            time.sleep(1)
+            # Launch containers to collect trajectories
+            # Each subprocess is a container running an actor and collect 5 trajectories
+            with Pool(self.num_actor) as p:
+                output = p.map(run_actor_in_container, self.ids)
+            for o in output:
+                print(o[0])
+            
             np.random.shuffle(self.ids)
             for id in self.ids:
                 id_steps, id_trajs, id_results = self.collect_worker_traj(id)
@@ -158,7 +186,7 @@ class CondorCollector(object):
                     self.buffer_expand(t)
         return steps, results
                 
-    def collect_worker_traj(self, id, skip_first=True):
+    def collect_worker_traj(self, id, skip_first=False):
         steps = 0
         trajs = []
         results = []

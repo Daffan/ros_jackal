@@ -1,8 +1,11 @@
 from gym.spaces import Box
 import numpy as np
 
-import rospy
-from geometry_msgs.msg import Twist
+try:  # make sure to create a fake environment without ros installed
+    import rospy
+    from geometry_msgs.msg import Twist
+except ModuleNotFoundError:
+    pass
 
 from envs.jackal_gazebo_envs import JackalGazebo, JackalGazeboLaser
 
@@ -10,7 +13,8 @@ class MotionControlContinuous(JackalGazebo):
     def __init__(self, min_v=-1, max_v=2, min_w=-3.14, max_w=3.14, **kwargs):
         self.action_dim = 2
         super().__init__(**kwargs)
-        self._cmd_vel_pub = rospy.Publisher('/cmd_vel', Twist, queue_size=1)
+        if self.init_sim:
+            self._cmd_vel_pub = rospy.Publisher('/cmd_vel', Twist, queue_size=1)
         
         self.range_dict = RANGE_DICT = {
             "linear_velocity": [min_v, max_v],
