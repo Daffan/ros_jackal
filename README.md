@@ -31,7 +31,7 @@ git clone https://github.com/Daffan/ros_jackal.git
 git clone https://github.com/jackal/jackal.git --branch melodic-devel
 git clone https://github.com/jackal/jackal_simulator.git --branch melodic-devel
 git clone https://github.com/jackal/jackal_desktop.git --branch melodic-devel
-git clone https://github.com/utexas-bwi/eband_local_planner.git --branch melodic-devel
+git clone https://github.com/utexas-bwi/eband_local_planner.git
 ```
 
 * Install ROS package dependencies
@@ -49,7 +49,8 @@ catkin_make
 ```
 
 4. Verify your installation: (this script will run open-ai gym environment for 5 episodes)
-Pull image file
+
+Pull image file (modify the <FOLDER_PATH_TO_SAVE_IMAGE> in the command, image file size ~ 3G)
 ```
 singularity pull --name <FOLDER_PATH_TO_SAVE_IMAGE>/image:latest.sif library://zifanxu/ros_jackal_image/image:latest
 ```
