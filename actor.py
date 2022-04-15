@@ -105,7 +105,7 @@ def main(args):
     env = gym.make(env_config["env_id"], **env_config["kwargs"])
     env = StackFrame(env, stack_frame=env_config["stack_frame"])
 
-    policy, _ = initialize_policy(config, env, init_buffer=False)
+    policy, _ = initialize_policy(config, env, init_buffer=False, device="cpu")
     num_ep = 0
 
     for _ in range(args.num_trajs):

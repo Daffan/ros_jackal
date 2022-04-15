@@ -98,7 +98,7 @@ def get_encoder(encoder_type, args):
         raise Exception(f"[error] Unknown encoder type {encoder_type}!")
     return encoder
 
-def initialize_policy(config, env, init_buffer=True):
+def initialize_policy(config, env, init_buffer=True, device=None):
     training_config = config["training_config"]
 
     state_dim = env.observation_space.shape
@@ -107,8 +107,9 @@ def initialize_policy(config, env, init_buffer=True):
     action_space_high = env.action_space.high
 
     # find available device
-    devices = GPUtil.getAvailable(order = 'first', limit = 1, maxLoad = 0.8, maxMemory = 0.8, includeNan=False, excludeID=[], excludeUUID=[])
-    device = "cuda:%d" %(devices[0]) if len(devices) > 0 else "cpu"
+    if device is None:
+        devices = GPUtil.getAvailable(order = 'first', limit = 1, maxLoad = 0.8, maxMemory = 0.8, includeNan=False, excludeID=[], excludeUUID=[])
+        device = "cuda:%d" %(devices[0]) if len(devices) > 0 else "cpu"
     print("    >>>> Running on device %s" %(device))
 
     encoder_type = training_config["encoder"]
@@ -306,6 +307,7 @@ if __name__ == "__main__":
     torch.set_num_threads(8)
     parser = argparse.ArgumentParser(description = 'Start training')
     parser.add_argument('--config_path', dest='config_path', default="configs/e2e_default.yaml")
+    parser.add_argument('--device', dest='device', default=None)
     logging.getLogger().setLevel("INFO")
     args = parser.parse_args()
     CONFIG_PATH = args.config_path
@@ -318,7 +320,7 @@ if __name__ == "__main__":
     env = initialize_envs(config)
     
     print(">>>>>>>> Initializing the policy")
-    policy, replay_buffer = initialize_policy(config, env)
+    policy, replay_buffer = initialize_policy(config, env, device=args.device)
 
     print(">>>>>>>> Start training")
     train(env, policy, replay_buffer, config)

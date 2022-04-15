@@ -19,7 +19,7 @@ BUFFER_PATH = os.getenv('BUFFER_PATH')
 
 def run_actor_in_container(id=0):
     out = client.execute(
-        '/scratch/cluster/zifan/ros_jackal_image.sif',
+        join(BUFFER_PATH, "image:latest.sif"),
         ['/bin/bash', '/jackal_ws/src/ros_jackal/entrypoint.sh', 'python3', 'actor.py', '--id=%d' %id],
         bind=['%s:%s' %(BUFFER_PATH, BUFFER_PATH), '%s:%s' %(os.getcwd(), "/jackal_ws/src/ros_jackal")],
         options=["-i", "-n", "--network=none", "-p"], nv=True
@@ -172,6 +172,11 @@ class ContainerCollector(object):
         while steps < n_steps:
             # Launch containers to collect trajectories
             # Each subprocess is a container running an actor and collect 5 trajectories
+            if not exists(join(BUFFER_PATH, "image:latest.sif")):
+                image, puller = client.pull('library://zifanxu/ros_jackal_image/image:latest', stream=True, pull_folder=BUFFER_PATH)
+                for line in puller:
+                    print(line)
+            
             with Pool(self.num_actor) as p:
                 output = p.map(run_actor_in_container, self.ids)
             for o in output:

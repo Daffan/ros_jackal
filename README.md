@@ -49,8 +49,12 @@ catkin_make
 ```
 
 4. Verify your installation: (this script will run open-ai gym environment for 5 episodes)
+Pull image file
 ```
-./singularity_run.sh test_env.py
+singularity pull --name <FOLDER_PATH_TO_SAVE_IMAGE>/image:latest.sif library://zifanxu/ros_jackal_image/image:latest
+```
+```
+./singularity_run.sh <FOLDER_PATH_TO_SAVE_IMAGE>/image:latest.sif test_env.py
 ```
 
 ## Train a deep RL navigation policy
