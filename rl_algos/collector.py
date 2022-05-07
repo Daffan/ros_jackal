@@ -16,6 +16,9 @@ except:
     pass
 
 BUFFER_PATH = os.getenv('BUFFER_PATH')
+if not BUFFER_PATH:
+    BUFFER_PATH = "buffer_folder"
+    os.environ["BUFFER_PATH"] = "buffer_folder"
 
 def run_actor_in_container(id=0):
     out = client.execute(

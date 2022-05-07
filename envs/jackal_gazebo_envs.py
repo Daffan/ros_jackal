@@ -31,7 +31,8 @@ class JackalGazebo(gym.Env):
         goal_reward=1,
         max_collision=10000,
         verbose=True,
-        init_sim=True
+        init_sim=True,
+        hard_collision=False
     ):
         """Base RL env that initialize jackal simulation in Gazebo
         """
@@ -55,6 +56,7 @@ class JackalGazebo(gym.Env):
         self.collision_reward = collision_reward
         self.goal_reward = goal_reward
         self.max_collision = max_collision
+        self.hard_collision = hard_collision
         
         self.world_frame_goal = (
             self.init_position[0] + self.goal_position[0],
@@ -74,6 +76,7 @@ class JackalGazebo(gym.Env):
                                                     'world_name:=' + world_name,
                                                     'gui:=' + ("true" if gui else "false"),
                                                     'verbose:=' + ("true" if verbose else "false"),
+                                                    'hard_collision:=' + ("true" if hard_collision else "false")
                                                     ])
             time.sleep(10)  # sleep to wait until the gazebo being created
 
@@ -81,7 +84,7 @@ class JackalGazebo(gym.Env):
             rospy.init_node('gym', anonymous=True, log_level=rospy.FATAL)
             rospy.set_param('/use_sim_time', True)
             
-            self.gazebo_sim = GazeboSimulation(init_position=self.init_position)
+            self.gazebo_sim = GazeboSimulation(init_position=self.init_position, hard_collision=hard_collision)
 
         # place holders
         self.action_space = None

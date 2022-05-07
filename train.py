@@ -312,6 +312,11 @@ if __name__ == "__main__":
     args = parser.parse_args()
     CONFIG_PATH = args.config_path
     SAVE_PATH = "logging/"
+    BUFFER_PATH = os.getenv('BUFFER_PATH')
+    if not BUFFER_PATH:
+        BUFFER_PATH = "buffer_folder"
+        os.environ["BUFFER_PATH"] = "buffer_folder"
+    
     print(">>>>>>>> Loading the configuration from %s" % CONFIG_PATH)
     config = initialize_config(CONFIG_PATH, SAVE_PATH)
 

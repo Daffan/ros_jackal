@@ -26,7 +26,9 @@ def create_model_state(x, y, z, angle):
 
 class GazeboSimulation():
 
-    def __init__(self, init_position = [0, 0, 0]):
+    def __init__(self, init_position = [0, 0, 0], hard_collision=True):
+        self.hard_collision = hard_collision
+
         self._pause = rospy.ServiceProxy('/gazebo/pause_physics', Empty)
         self._unpause = rospy.ServiceProxy('/gazebo/unpause_physics', Empty)
         self._reset = rospy.ServiceProxy('/gazebo/set_model_state', SetModelState)
@@ -35,8 +37,11 @@ class GazeboSimulation():
         self._init_model_state = create_model_state(init_position[0],init_position[1],0,init_position[2])
         
         self.collision_count = 0
-        self._collision_sub = rospy.Subscriber("/collision", Bool, self.collision_monitor)
-        
+        if hard_collision:
+            self._collision_sub = rospy.Subscriber("/collision", Bool, self.collision_monitor)
+        else:
+            pass  # self._collision_sub = rospy.Subscriber('front/scan', LaserScan, self.collision_monitor, queue_size=1)
+
         self.bad_vel_count = 0
         self.vel_count = 0
         self._vel_sub = rospy.Subscriber("/jackal_velocity_controller/cmd_vel", Twist, self.vel_monitor)
@@ -67,8 +72,12 @@ class GazeboSimulation():
     
     def get_hard_collision(self):
         # hard collision count since last call
-        collided = self.collision_count > 0
-        self.collision_count = 0
+        if self.hard_collision:
+            collided = self.collision_count > 0
+            self.collision_count = 0
+        else:
+            #  collided if the mean of the closest 10 laser bins < 0.3
+            collided = np.mean(np.sort(self.get_laser_scan().range)[:10]) < 0.3
         return collided
 
     def pause(self):

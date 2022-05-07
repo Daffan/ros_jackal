@@ -121,6 +121,7 @@ def main(args):
             obs = obs_new
         num_ep += 1
         write_buffer(traj, id)
+        _debug_print_robot_status(env, 0, rew, actions)
     
     print(">>>>>>>>>>>>>>>>>>>>>>>>> actor_id: %d, world_idx: %s, num_episode: %d" %(id, world_name, num_ep))
 

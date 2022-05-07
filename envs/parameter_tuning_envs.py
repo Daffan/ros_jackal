@@ -4,8 +4,11 @@ import subprocess
 
 from gym.spaces import Box
 import numpy as np
-import rospy
-import rospkg
+try:  # make sure to create a fake environment without ros installed
+    import rospy
+    import rospkg
+except ModuleNotFoundError:
+    pass
 
 from envs.move_base import MoveBase
 from envs.jackal_gazebo_envs import JackalGazebo, JackalGazeboLaser
@@ -43,7 +46,6 @@ class DWAParamContinuous(JackalGazebo):
     ):
         self.action_dim = len(param_list)
         super().__init__(**kwargs)
-        
         if "init_sim" not in kwargs.keys() or kwargs["init_sim"]:
             self.base_local_planner = base_local_planner
             self.move_base = self.launch_move_base(goal_position=self.goal_position, base_local_planner=self.base_local_planner)
