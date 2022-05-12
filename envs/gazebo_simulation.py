@@ -77,7 +77,7 @@ class GazeboSimulation():
             self.collision_count = 0
         else:
             #  collided if the mean of the closest 10 laser bins < 0.3
-            collided = np.mean(np.sort(self.get_laser_scan().range)[:10]) < 0.3
+            collided = np.mean(np.sort(self.get_laser_scan().ranges)[:10]) < 0.3
         return collided
 
     def pause(self):

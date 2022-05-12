@@ -176,7 +176,7 @@ class ContainerCollector(object):
             # Launch containers to collect trajectories
             # Each subprocess is a container running an actor and collect 5 trajectories
             if not exists(join(BUFFER_PATH, "image:latest.sif")):
-                image, puller = client.pull('library://zifanxu/ros_jackal_image/image:latest', stream=True, pull_folder=BUFFER_PATH)
+                image, puller = client.pull('library://zifanxu/ros_jackal_image/image:competition', stream=True, pull_folder=BUFFER_PATH)
                 for line in puller:
                     print(line)
             

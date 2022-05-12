@@ -1,3 +1,29 @@
+# BARN competition
+Check this [repo](https://github.com/Daffan/nav-competition-icra2022/tree/main) for BARN competition.
+
+Follow installation instruction in the next seciton first.
+
+Add following environment variables:
+```
+export JACKAL_LASER=1
+export JACKAL_LASER_MODEL=ust10
+export JACKAL_LASER_OFFSET="-0.065 0 0.01"
+```
+
+Once you install the repo, you can train a policy for BARN competition as follow:
+```
+# For end-to-end policy
+python3 train.py --config_path configs/e2e_default.yaml
+
+# For APPLR policy
+python3 train.py --config_path configs/applr_dwa.yaml
+```
+
+To test you policy
+```
+./singularity_run.sh <FOLDER_PATH_TO_SAVE_IMAGE>/image:latest.sif test.py --policy_path <FOLDER_PATH_TO_THE_LOGGINGS> --world_id 0
+```
+
 # ROS-Jackal
 This is the repository for the under review paper "[Benchmarking Reinforcement Learning Techniques for Autonomous Navigation]()".
 

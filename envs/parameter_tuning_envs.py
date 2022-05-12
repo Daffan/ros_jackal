@@ -45,9 +45,9 @@ class DWAParamContinuous(JackalGazebo):
         **kwargs
     ):
         self.action_dim = len(param_list)
+        self.base_local_planner = base_local_planner
         super().__init__(**kwargs)
         if "init_sim" not in kwargs.keys() or kwargs["init_sim"]:
-            self.base_local_planner = base_local_planner
             self.move_base = self.launch_move_base(goal_position=self.goal_position, base_local_planner=self.base_local_planner)
         
         self.param_list = param_list
@@ -130,6 +130,23 @@ class DWAParamContinuous(JackalGazebo):
         super()._take_action(action)
         self.gazebo_sim.pause()
 
+    def _get_observation(self, pos, psi, action):
+        # observation is the 720 dim laser scan + one local goal in angle
+        laser_scan = self._get_laser_scan()
+        laser_scan = (laser_scan - self.laser_clip/2.) / self.laser_clip * 2 # scale to (-1, 1)
+        
+        # goal_pos = self.transform_goal(self.world_frame_goal, pos, psi) / 5.0 - 1  # roughly (-1, 1) range
+        goal_pos = self.move_base.get_global_path()[-1] / 5.0 - 1  # using goal location from move_base
+        
+        bias = (self.action_space.high + self.action_space.low) / 2.
+        scale = (self.action_space.high - self.action_space.low) / 2.
+        action = (action - bias) / scale
+        
+        obs = [laser_scan, goal_pos, action]
+        
+        obs = np.concatenate(obs)
+
+        return obs
 
 class DWAParamContinuousLaser(DWAParamContinuous, JackalGazeboLaser):
     def __init__(self, **kwargs):
