@@ -65,6 +65,8 @@ python train.py --config configs/e2e_default.yaml
 ```
 We provide the full list of ```.yaml``` files used in our experiment in the end.
 
+This repo saves the collected trajectories from each actor in a local buffer folder, also actors load the recent policy from this folder. By default, buffer folder is a folder named `local_buffer` in current dictionary. You can specify a new folder as `export BUFFER_FOLDER=/PATH/TO/YOUR/BUFFER_FOLDER`. The logging files can be found under folder `logging`.
+
 ## Results
 Success rate of policies trained with different neural network architectures and history lengths in static (top) and dynamic-wall (bottom) environments.
 

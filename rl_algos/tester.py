@@ -10,6 +10,8 @@ sys.path.append(dirname(dirname(abspath(__file__))))
 from rl_algos.wrappers import StackFrame
 
 BUFFER_PATH = os.getenv('BUFFER_PATH')
+if not BUFFER_PATH:
+    BUFFER_PATH = "local_buffer"
 
 def get_world_name(config, id):
     # We test each test world with two actors, so duplicate the lict by a factor of two
