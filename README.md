@@ -114,57 +114,109 @@ Success rate of policies trained with different number of training environments
 
 (See below for all the config files used to reproduce the experiments)
 ```
- |-configs
- | |-safe_rl
- | | |-mpc.yaml
- | | |-mlp.yaml
- | | |-lagrangian.yaml
- | |-architecture_static
- | | |-mlp_history_length_4.yaml
- | | |-cnn_history_length_8.yaml
- | | |-cnn_history_length_4.yaml
- | | |-mlp_history_length_8.yaml
- | | |-rnn_history_length_4.yaml
- | | |-mlp_history_length_1.yaml
- | | |-cnn_history_length_1.yaml
- | | |-rnn_history_length_8.yaml
- | | |-rnn_history_length_1.yaml
- | | |-transformer_history_length_1.yaml
- | | |-transformer_history_length_4.yaml
- | | |-transformer_history_length_8.yaml
- | |-architecture_dynamic_wall
- | | |-cnn_history_length_1.yaml
- | | |-cnn_history_length_4.yaml
- | | |-cnn_history_length_8.yaml
- | | |-mlp_history_length_1.yaml
- | | |-mlp_history_length_4.yaml
- | | |-mlp_history_length_8.yaml
- | | |-rnn_history_length_1.yaml
- | | |-rnn_history_length_4.yaml
- | | |-rnn_history_length_8.yaml
- | | |-transformer_history_length_1.yaml
- | | |-transformer_history_length_4.yaml
- | | |-transformer_history_length_8.yaml
- | |-architecture_dynamic_box
- | | |-cnn_history_length_1.yaml
- | | |-cnn_history_length_4.yaml
- | | |-cnn_history_length_8.yaml
- | | |-mlp_history_length_1.yaml
- | | |-mlp_history_length_4.yaml
- | | |-mlp_history_length_8.yaml
- | | |-rnn_history_length_1.yaml
- | | |-rnn_history_length_4.yaml
- | | |-rnn_history_length_8.yaml
- | | |-transformer_history_length_1.yaml
- | | |-transformer_history_length_4.yaml
- | | |-transformer_history_length_8.yaml
- | |-model_based
- | | |-dyna.yaml
- | | |-mpc.yaml
- | |-generalization
- | | |-num_world_50.yaml
- | | |-num_world_5.yaml
- | | |-num_world_10.yaml
- | | |-num_world_100.yaml
- | | |-num_world_250.yaml
+ └─configs
+ │ └─safe_rl
+ │ │ └─mpc.yaml
+ │ │ └─mlp.yaml
+ │ │ └─lagrangian.yaml
+ │ └─architecture_static
+ │ │ └─mlp_history_length_4.yaml
+ │ │ └─cnn_history_length_8.yaml
+ │ │ └─cnn_history_length_4.yaml
+ │ │ └─mlp_history_length_8.yaml
+ │ │ └─rnn_history_length_4.yaml
+ │ │ └─mlp_history_length_1.yaml
+ │ │ └─cnn_history_length_1.yaml
+ │ │ └─rnn_history_length_8.yaml
+ │ │ └─rnn_history_length_1.yaml
+ │ │ └─transformer_history_length_1.yaml
+ │ │ └─transformer_history_length_4.yaml
+ │ │ └─transformer_history_length_8.yaml
+ │ └─architecture_dynamic_wall
+ │ │ └─cnn_history_length_1.yaml
+ │ │ └─cnn_history_length_4.yaml
+ │ │ └─cnn_history_length_8.yaml
+ │ │ └─mlp_history_length_1.yaml
+ │ │ └─mlp_history_length_4.yaml
+ │ │ └─mlp_history_length_8.yaml
+ │ │ └─rnn_history_length_1.yaml
+ │ │ └─rnn_history_length_4.yaml
+ │ │ └─rnn_history_length_8.yaml
+ │ │ └─transformer_history_length_1.yaml
+ │ │ └─transformer_history_length_4.yaml
+ │ │ └─transformer_history_length_8.yaml
+ │ └─architecture_dynamic_box
+ │ │ └─cnn_history_length_1.yaml
+ │ │ └─cnn_history_length_4.yaml
+ │ │ └─cnn_history_length_8.yaml
+ │ │ └─mlp_history_length_1.yaml
+ │ │ └─mlp_history_length_4.yaml
+ │ │ └─mlp_history_length_8.yaml
+ │ │ └─rnn_history_length_1.yaml
+ │ │ └─rnn_history_length_4.yaml
+ │ │ └─rnn_history_length_8.yaml
+ │ │ └─transformer_history_length_1.yaml
+ │ │ └─transformer_history_length_4.yaml
+ │ │ └─transformer_history_length_8.yaml
+ │ └─model_based
+ │ │ └─dyna.yaml
+ │ │ └─mpc.yaml
+ │ └─generalization
+ │ │ └─num_world_50.yaml
+ │ │ └─num_world_5.yaml
+ │ │ └─num_world_10.yaml
+ │ │ └─num_world_100.yaml
+ │ │ └─num_world_250.yamlconfigs
+ │ └─safe_rl
+ │ │ └─mpc.yaml
+ │ │ └─mlp.yaml
+ │ │ └─lagrangian.yaml
+ │ └─architecture_static
+ │ │ └─mlp_history_length_4.yaml
+ │ │ └─cnn_history_length_8.yaml
+ │ │ └─cnn_history_length_4.yaml
+ │ │ └─mlp_history_length_8.yaml
+ │ │ └─rnn_history_length_4.yaml
+ │ │ └─mlp_history_length_1.yaml
+ │ │ └─cnn_history_length_1.yaml
+ │ │ └─rnn_history_length_8.yaml
+ │ │ └─rnn_history_length_1.yaml
+ │ │ └─transformer_history_length_1.yaml
+ │ │ └─transformer_history_length_4.yaml
+ │ │ └─transformer_history_length_8.yaml
+ │ └─architecture_dynamic_wall
+ │ │ └─cnn_history_length_1.yaml
+ │ │ └─cnn_history_length_4.yaml
+ │ │ └─cnn_history_length_8.yaml
+ │ │ └─mlp_history_length_1.yaml
+ │ │ └─mlp_history_length_4.yaml
+ │ │ └─mlp_history_length_8.yaml
+ │ │ └─rnn_history_length_1.yaml
+ │ │ └─rnn_history_length_4.yaml
+ │ │ └─rnn_history_length_8.yaml
+ │ │ └─transformer_history_length_1.yaml
+ │ │ └─transformer_history_length_4.yaml
+ │ │ └─transformer_history_length_8.yaml
+ │ └─architecture_dynamic_box
+ │ │ └─cnn_history_length_1.yaml
+ │ │ └─cnn_history_length_4.yaml
+ │ │ └─cnn_history_length_8.yaml
+ │ │ └─mlp_history_length_1.yaml
+ │ │ └─mlp_history_length_4.yaml
+ │ │ └─mlp_history_length_8.yaml
+ │ │ └─rnn_history_length_1.yaml
+ │ │ └─rnn_history_length_4.yaml
+ │ │ └─rnn_history_length_8.yaml
+ │ │ └─transformer_history_length_1.yaml
+ │ │ └─transformer_history_length_4.yaml
+ │ │ └─transformer_history_length_8.yaml
+ │ └─model_based
+ │ │ └─dyna.yaml
+ │ │ └─mpc.yaml
+ │ └─generalization
+ │ │ └─num_world_50.yaml
+ │ │ └─num_world_5.yaml
+ │ │ └─num_world_10.yaml
+ │ │ └─num_world_100.yaml
+ │ │ └─num_world_250.yaml
 ```
