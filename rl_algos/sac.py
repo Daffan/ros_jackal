@@ -10,19 +10,48 @@ from torch.distributions import Normal, Categorical
 
 from rl_algos.base_rl_algo import BaseRLAlgo
 
+LOG_SIG_MAX = 2
+LOG_SIG_MIN = -20
+epsilon = 1e-6
 
-class Actor(nn.Module):
-    def __init__(self, encoder, head, action_dim):
-        super(Actor, self).__init__()
+def weights_init_(m):
+    if isinstance(m, nn.Linear):
+        torch.nn.init.xavier_uniform_(m.weight, gain=1)
+        torch.nn.init.constant_(m.bias, 0)
 
-        self.encoder = encoder
+
+class GaussianActor(nn.Module):
+    def __init__(self, state_preprocess, head, action_dim):
+        super(GaussianActor, self).__init__()
+
+        self.state_preprocess = state_preprocess
         self.head = head
-        self.fc = nn.Linear(self.encoder.feature_dim, action_dim)
+        self.fc_mean = nn.Linear(self.state_preprocess.feature_dim, action_dim)
+        self.fc_log_std = nn.Linear(self.state_preprocess.feature_dim, action_dim)
+
+        self.head.apply(weights_init_)
+        self.fc_mean.apply(weights_init_)
+        self.fc_log_std.apply(weights_init_)
 
     def forward(self, state):
-        a = self.encoder(state) if self.encoder else state
+        a = self.state_preprocess(state) if self.state_preprocess else state
         a = self.head(a)
-        return torch.tanh(self.fc(a))
+        mean = self.fc_mean(a)
+        log_std = torch.tanh(self.fc_log_std(a))
+        log_std = torch.clamp(log_std, min=LOG_SIG_MIN, max=LOG_SIG_MAX)
+        return mean, log_std
+
+    def sample(self, state):
+        mean, log_std = self.forward(state)
+        std = log_std.exp()
+        normal = Normal(mean, std)
+        x_t = normal.rsample()  # for reparameterization trick (mean + std * N(0,1))
+        y_t = torch.tanh(x_t)
+        log_prob = normal.log_prob(x_t)
+        # Enforcing Action Bound
+        log_prob -= torch.log((1 - y_t.pow(2)) + epsilon)
+        log_prob = log_prob.sum(1, keepdim=True)
+        return y_t, log_prob, mean
 
 
 class Critic(nn.Module):
@@ -65,7 +94,7 @@ class Critic(nn.Module):
         return q1
 
 
-class TD3(BaseRLAlgo):
+class SAC(BaseRLAlgo):
     def __init__(
             self,
             actor,
@@ -75,12 +104,10 @@ class TD3(BaseRLAlgo):
             action_range,
             device="cpu",
             gamma=0.99,
-            tau=0.005,
-            policy_noise=0.2,
-            noise_clip=0.5,
             n_step=4,
-            update_actor_freq=2,
-            exploration_noise=0.1,
+            tau=0.005,
+            alpha=0.2,
+            automatic_entropy_tuning=True,
     ):
         super().__init__(
             actor,
@@ -96,21 +123,21 @@ class TD3(BaseRLAlgo):
         self.critic_target = copy.deepcopy(self.critic)
 
         self.tau = tau
-        self.policy_noise = policy_noise
-        self.noise_clip = noise_clip
-        self.update_actor_freq = update_actor_freq
-        self.exploration_noise = exploration_noise
+        self.alpha = alpha
+        self.automatic_entropy_tuning = automatic_entropy_tuning
 
-        self.total_it = 0
+        if self.automatic_entropy_tuning:
+            self.target_entropy = -torch.prod(torch.Tensor(np.array(self.action_range).shape).to(self.device)).item()
+            self.log_alpha = torch.zeros(1, requires_grad=True, device=self.device)
+            self.alpha_optim = torch.optim.Adam([self.log_alpha], lr=0.0001)
 
     def select_action(self, state, to_cpu=True):
         state = torch.FloatTensor(state).to(self.device)
         if len(state.shape) < 3:
             state = state[None, :, :]
-        action = self.actor(state)
-        action += torch.randn_like(action) * self.exploration_noise
+        action, *_ = self.actor.sample(state)
         if to_cpu:
-            action = self.actor(state).cpu().data.numpy().flatten()
+            action = action.cpu().data.numpy().flatten()
             action *= self._action_scale.cpu().data.numpy()
             action += self._action_bias.cpu().data.numpy()
         return action
@@ -119,16 +146,11 @@ class TD3(BaseRLAlgo):
         self.total_it += 1
 
         with torch.no_grad():
-            # Select action according to policy and add clipped noise
-            noise = (
-                torch.randn_like(action) * self.policy_noise
-            ).clamp(-self.noise_clip, self.noise_clip)
-
-            next_action = (self.actor_target(next_state) + noise).clamp(-1, 1)
+            next_action, next_log_std, _ = self.actor_target.sample(next_state)
 
             # Compute the target Q value
             target_Q1, target_Q2 = self.critic_target(next_state, next_action)
-            target_Q = torch.min(target_Q1, target_Q2)
+            target_Q = torch.min(target_Q1, target_Q2) - self.alpha * next_log_std
             target_Q = reward + not_done * gammas * target_Q
 
         # Get current Q estimates
@@ -146,42 +168,55 @@ class TD3(BaseRLAlgo):
         self.critic_optimizer.step()
 
         actor_loss = None
-        # Delayed policy updates
-        if self.total_it % self.update_actor_freq == 0:
 
-            # Compute actor losse
-            actor_loss = -self.critic.Q1(state, self.actor(state)).mean()
+        # Compute actor losse
+        action, action_log_std, _ = self.actor.sample(state)
+        actor_loss = (self.alpha * action_log_std - self.critic.Q1(state, action)).mean()
 
-            # Optimize the actor
-            self.actor_optimizer.zero_grad()
-            actor_loss.backward()
-            self.actor_optimizer.step()
+        # Optimize the actor
+        self.actor_optimizer.zero_grad()
+        actor_loss.backward()
+        self.actor_optimizer.step()
 
-            # Update the frozen target models
-            for param, target_param in zip(self.critic.parameters(), self.critic_target.parameters()):
-                target_param.data.copy_(
-                    self.tau * param.data + (1 - self.tau) * target_param.data)
-                
-            for param, target_param in zip(self.actor.parameters(), self.actor_target.parameters()):
-                target_param.data.copy_(
-                    self.tau * param.data + (1 - self.tau) * target_param.data)
+        # Update the frozen target models
+        for param, target_param in zip(self.critic.parameters(), self.critic_target.parameters()):
+            target_param.data.copy_(
+                self.tau * param.data + (1 - self.tau) * target_param.data)
+            
+        for param, target_param in zip(self.actor.parameters(), self.actor_target.parameters()):
+            target_param.data.copy_(
+                self.tau * param.data + (1 - self.tau) * target_param.data)
+
+        alpha_loss = None
+        if self.automatic_entropy_tuning:
+            alpha_loss = -(self.log_alpha * (action_log_std + self.target_entropy).detach()).mean()
+
+            self.alpha_optim.zero_grad()
+            alpha_loss.backward()
+            self.alpha_optim.step()
+
+            self.alpha = self.log_alpha.exp()
+        else:
+            alpha_loss = torch.tensor(0.).to(self.device)
 
         actor_loss = actor_loss.item() if actor_loss is not None else None
         critic_loss = critic_loss.item()
+        alpha_loss = alpha_loss.item() if self.automatic_entropy_tuning else None
         return {
             "Actor_grad_norm": self.grad_norm(self.actor),
             "Critic_grad_norm": self.grad_norm(self.critic),
             "Actor_loss": actor_loss,
-            "Critic_loss": critic_loss
+            "Critic_loss": critic_loss,
+            "alpha_loss": alpha_loss,
         }
 
     def save(self, dir, filename):
         super().save(dir, filename)
         with open(join(dir, filename + "_noise"), "wb") as f:
-            pickle.dump(self.exploration_noise, f)
+            pickle.dump(self.alpha, f)
 
     def load(self, dir, filename):
         super().load(dir, filename)
         self.actor_target = copy.deepcopy(self.actor)
         with open(join(dir, filename + "_noise"), "rb") as f:
-            self.exploration_noise = pickle.load(f)
+            self.alpha = pickle.load(f)

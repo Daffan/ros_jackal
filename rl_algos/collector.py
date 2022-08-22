@@ -21,7 +21,7 @@ if not BUFFER_PATH:
 
 def run_actor_in_container(id=0):
     out = client.execute(
-        join(BUFFER_PATH, "image:latest.sif"),
+        join(BUFFER_PATH, "nav_benchmark.sif"),
         ['/bin/bash', '/jackal_ws/src/ros_jackal/entrypoint.sh', 'python3', 'actor.py', '--id=%d' %id],
         bind=['%s:%s' %(BUFFER_PATH, BUFFER_PATH), '%s:%s' %(os.getcwd(), "/jackal_ws/src/ros_jackal")],
         options=["-i", "-n", "--network=none", "-p"], nv=True
@@ -65,14 +65,9 @@ class LocalCollector(object):
             world = int(info['world'].split(
                 "_")[-1].split(".")[0])  # task index
             collision_reward = -int(info['collided'])
-            if self.policy.safe_rl:
-                self.buffer.add(obs, act,
-                                obs_new, rew,
-                                done, world, collision_reward)
-            else:
-                self.buffer.add(obs, act,
-                                obs_new, rew,
-                                done, world)
+            self.buffer.add(obs, act,
+                            obs_new, rew,
+                            done, world, collision_reward)
             if done:
                 obs = env.reset()
                 results.append(dict(
@@ -174,8 +169,8 @@ class ContainerCollector(object):
         while steps < n_steps:
             # Launch containers to collect trajectories
             # Each subprocess is a container running an actor and collect 5 trajectories
-            if not exists(join(BUFFER_PATH, "image:latest.sif")):
-                image, puller = client.pull('library://zifanxu/ros_jackal_image/image:latest', stream=True, pull_folder=BUFFER_PATH)
+            if not exists(join(BUFFER_PATH, "nav_benchmark.sif")):
+                image, puller = client.pull('library://zifanxu/ros_jackal_image/image:latest', stream=True, pull_folder=BUFFER_PATH, name='nav_benchmark.sif')
                 for line in puller:
                     print(line)
             

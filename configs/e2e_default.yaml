@@ -38,20 +38,8 @@ training_config:
   encoder_hidden_layer_size: 512
   exploration_noise_start: 0.1
   exploration_noise_end: 0.0999
-  pre_collect: 4096
+  pre_collect: 10
   log_intervals: 2
-
-  dyna_style: False
-  n_simulated_update: 10
-  model_lr: 0.0001
-
-  MPC: False
-  horizon: 10
-  num_particle: 256
-
-  safe_rl: False # for safe RL
-  safe_mode: "lagr" # for safe RL
-  safe_lagr: 2. # for safe RL
 
   policy_args:
     tau: 0.005
@@ -63,7 +51,7 @@ training_config:
 
   training_args:
     max_step: 4000000
-    collect_per_step: 4096
+    collect_per_step: 10
     update_per_step: 1024
     batch_size: 128
 

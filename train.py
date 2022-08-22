@@ -19,10 +19,13 @@ from tensorboardX import SummaryWriter
 
 from envs import registration
 from envs.wrappers import StackFrame
+from rl_algos import algo_class
 from rl_algos.net import *
-from rl_algos.td3 import Actor, Critic, TD3, ReplayBuffer
-from rl_algos.model_based_td3 import DynaTD3, Model, SMCPTD3
-from rl_algos.safe_td3 import SafeTD3
+from rl_algos.base_rl_algo import ReplayBuffer
+from rl_algos.sac import GaussianActor
+from rl_algos.td3 import Actor, Critic #, TD3, ReplayBuffer
+from rl_algos.model_based import Model
+# from rl_algos.safe_td3 import SafeTD3
 from rl_algos.collector import ContainerCollector, LocalCollector
 
 def initialize_config(config_path, save_path):
@@ -41,16 +44,7 @@ def initialize_logging(config):
 
     # Config logging
     now = datetime.now()
-    dt_string = now.strftime("%Y_%m_%d_%H_%M")
-    if training_config["safe_rl"]:
-        mode = training_config["safe_mode"]
-        string = f"safe_rl_{mode}_"
-        if mode == "lagr":
-            string = string + "lagr"+str(training_config["safe_lagr"]) + "_"
-    else:
-        string = ""
-
-    string = string + dt_string
+    string = now.strftime("%Y_%m_%d_%H_%M")
 
     save_path = join(
         env_config["save_path"], 
@@ -145,7 +139,8 @@ def initialize_policy(config, env, init_buffer=True, device=None):
     )
 
     # initialize agents
-    if training_config["dyna_style"]:
+    algo = training_config["algorithm"]
+    if "Dyna" in algo or "SMCP" in algo or "MBPO" in algo:
         model = Model(
             encoder=get_encoder(encoder_type, encoder_args),
             head=MLP(input_dim, training_config['encoder_num_layers'], training_config['encoder_hidden_layer_size']),
@@ -156,39 +151,15 @@ def initialize_policy(config, env, init_buffer=True, device=None):
             model.parameters(), 
             lr=training_config['model_lr']
         )
-        policy = DynaTD3(
+        policy = algo_class[algo](
             model, model_optim,
-            training_config["model_update_per_step"],
-            training_config["n_simulated_update"],
             actor, actor_optim,
             critic, critic_optim,
             action_range=[action_space_low, action_space_high],
             device=device,
             **training_config["policy_args"]
         )
-    elif training_config["MPC"]:
-        model = Model(
-            state_preprocess=get_encoder(encoder_type, encoder_args),
-            head=MLP(input_dim, training_config['encoder_num_layers'], training_config['encoder_hidden_layer_size']),
-            state_dim=state_dim,
-            deterministic=training_config['deterministic']
-        ).to(device)
-        model_optim = torch.optim.Adam(
-            model.parameters(), 
-            lr=training_config['model_lr']
-        )
-        policy = SMCPTD3(
-            model, model_optim,
-            training_config["horizon"],
-            training_config["num_particle"],
-            training_config["model_update_per_step"],
-            actor, actor_optim,
-            critic, critic_optim,
-            action_range=[action_space_low, action_space_high],
-            device=device,
-            **training_config["policy_args"]
-        )
-    elif training_config["safe_rl"]:
+    elif "Safe" in algo:
         safe_critic = Critic(
             encoder=get_encoder(encoder_type, encoder_args),
             head=MLP(input_dim, training_config['encoder_num_layers'], training_config['encoder_hidden_layer_size']),
@@ -197,20 +168,18 @@ def initialize_policy(config, env, init_buffer=True, device=None):
             safe_critic.parameters(), 
             lr=training_config['critic_lr']
         )
-        policy = SafeTD3(
+        policy = algo_class[algo](
             safe_critic, safe_critic_optim,
-            actor, actor_optim, 
-            critic, critic_optim, 
+            actor, actor_optim,
+            critic, critic_optim,
             action_range=[action_space_low, action_space_high],
             device=device,
-            safe_lagr=training_config['safe_lagr'],
-            safe_mode=training_config['safe_mode'],
             **training_config["policy_args"]
         )
     else:
-        policy = TD3(
-            actor, actor_optim, 
-            critic, critic_optim, 
+        policy = algo_class[algo](
+            actor, actor_optim,
+            critic, critic_optim,
             action_range=[action_space_low, action_space_high],
             device=device,
             **training_config["policy_args"]
@@ -219,7 +188,7 @@ def initialize_policy(config, env, init_buffer=True, device=None):
     if init_buffer:
         replay_buffer = ReplayBuffer(
             state_dim, action_dim, training_config['buffer_size'],
-            device=device, safe_rl=training_config["safe_rl"],
+            device=device,
             reward_norm=False  # config['training_config']["reward_norm"]
         )
     else:
@@ -253,9 +222,10 @@ def train(env, policy, replay_buffer, config):
     
     while n_steps < training_args["max_step"]:
         # Linear decaying exploration noise from "start" -> "end"
-        policy.exploration_noise = \
-            - (training_config["exploration_noise_start"] - training_config["exploration_noise_end"]) \
-            *  n_steps / training_args["max_step"] + training_config["exploration_noise_start"]
+        if "TD3" in training_config["algorithm"]:
+            policy.exploration_noise = \
+                - (training_config["exploration_noise_start"] - training_config["exploration_noise_end"]) \
+                *  n_steps / training_args["max_step"] + training_config["exploration_noise_start"]
         steps, epinfo = collector.collect(n_steps=training_args["collect_per_step"])
         
         n_steps += steps
@@ -284,9 +254,16 @@ def train(env, policy, replay_buffer, config):
             "Collision": np.mean([epinfo["collision"] for epinfo in epinfo_buf]),
             "fps": n_steps / (t1 - t0),
             "n_episode": n_ep,
-            "Steps": n_steps,
-            "Exploration_noise": policy.exploration_noise,
+            "Steps": n_steps
         }
+        if "TD" in training_args["algorithm"] or "DDPG" in training_args["algorithm"]:
+            log.update({
+                "Exploration_noise": policy.exploration_noise,
+            })
+        if "SAC" in training_args["algorithm"]:
+            log.update({
+                "Alpha": policy.alpha,
+            })
         log.update(loss_info)
         print(pformat(log))
 

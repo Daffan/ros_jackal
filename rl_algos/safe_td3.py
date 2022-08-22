@@ -56,14 +56,8 @@ class SafeTD3(TD3):
         lmbd = F.relu((0.1 * phi - g1.dot(g2))/(g2.dot(g2)+1e-8))
         return g1 + lmbd * g2
 
-    def train_rl(self, replay_buffer, batch_size=256):
+    def train_rl(self, state, action, next_state, reward, not_done, gammas, collision_reward):
         self.total_it += 1
-
-        # Sample replay buffer ("task" for multi-task learning)
-        state, action, next_state, reward, not_done, task, collision_reward, ind = replay_buffer.sample(
-            batch_size)
-
-        next_state, reward, not_done, gammas, collision_reward = replay_buffer.n_step_return(self.n_step, ind, self.gamma)
 
         with torch.no_grad():
             # Select action according to policy and add clipped noise

@@ -25,7 +25,7 @@ env_config:
     max_w: 3.14
 
 training_config:
-  algorithm: "TD3"
+  algorithm: "SafeTD3"
   encoder: "mlp"  # span "mlp", "cnn", "rnn", "transformer"
   buffer_size: 200000
   actor_lr: 0.00001
@@ -41,18 +41,6 @@ training_config:
   pre_collect: 4096
   log_intervals: 2
 
-  dyna_style: False
-  n_simulated_update: 10
-  model_lr: 0.0001
-
-  MPC: False
-  horizon: 10
-  num_particle: 256
-
-  safe_rl: True # for safe RL
-  safe_mode: "lagr" # for safe RL
-  safe_lagr: 2. # for safe RL
-
   policy_args:
     tau: 0.005
     gamma: 0.99
@@ -60,6 +48,9 @@ training_config:
     update_actor_freq: 2
     noise_clip: 0.5
     n_step: 4
+    safe_threshold: -0.1,
+    safe_mode: "lagr" # for safe RL
+    safe_lagr: 2. # for safe RL
 
   training_args:
     max_step: 4000000
