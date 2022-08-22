@@ -36,9 +36,11 @@ class BaseRLAlgo:
             (action_range[1] + action_range[0]) / 2.0, device=self.device)
 
     def select_action(self, state, to_cpu=True):
+        # use the actor network to compute the action
         raise NotImplementedError
 
     def train_rl(self, state, action, next_state, reward, not_done, gammas):
+        # update actor and critic with the batch of transition samples
         raise NotImplementedError
 
     def train(self, replay_buffer, batch_size=256):
