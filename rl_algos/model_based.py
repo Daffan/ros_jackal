@@ -84,7 +84,7 @@ class DynaRLAlgo(BaseRLAlgo):
         super().__init__(*args, **kw_args)
 
     def train_model(self, replay_buffer, batch_size=256):
-        state, action, next_state, reward, not_done, _, _ = replay_buffer.sample(batch_size)
+        state, action, next_state, reward, not_done, *_ = replay_buffer.sample(batch_size)
         action -= self._action_bias
         action /= self._action_scale
         done = 1 - not_done
@@ -142,7 +142,7 @@ class DynaRLAlgo(BaseRLAlgo):
         simulated_rl_loss_infos = []
         for _ in range(self.n_simulated_update):
             state, action, next_state, reward, not_done, gammas = self.simulate_transition(replay_buffer, batch_size)
-            simulated_rl_loss_info = self.train_rl(state, action, next_state, reward, not_done, gammas)
+            simulated_rl_loss_info = self.train_rl(state, action, next_state, reward, not_done, gammas, None)
             simulated_rl_loss_infos.append(simulated_rl_loss_info)
 
         simulated_rl_loss_info = {}
@@ -180,7 +180,7 @@ class MBPORLAlgo(BaseRLAlgo):
         super().__init__(*args, **kw_args)
 
     def train_model(self, replay_buffer, batch_size=256):
-        state, action, next_state, reward, not_done, _, _ = replay_buffer.sample(batch_size)
+        state, action, next_state, reward, not_done, *_ = replay_buffer.sample(batch_size)
         action -= self._action_bias
         action /= self._action_scale
         done = 1 - not_done

@@ -44,8 +44,8 @@ class BaseRLAlgo:
         raise NotImplementedError
 
     def train(self, replay_buffer, batch_size=256):
-        state, action, next_state, reward, not_done, gammas, collision_reward = replay_buffer.sample_transition(self.n_step, self.gamma, batch_size)
-        loss_info = self.train_rl(state, action, next_state, reward, not_done, gammas, collision_reward)
+        transitions = replay_buffer.sample_transition(self.n_step, self.gamma, batch_size)
+        loss_info = self.train_rl(*transitions)
         return loss_info
 
     def grad_norm(self, model):
@@ -112,17 +112,17 @@ class ReplayBuffer(object):
         self.mean, self.std = 0.0, 1.0
 
     def sample(self, batch_size, start_idx=0):
-        ind = np.random.randint(start_idx, self.size, size=batch_size)
+        index = np.random.randint(start_idx, self.size, size=batch_size)
 
         return (
-            torch.FloatTensor(self.state[ind]).to(self.device),
-            torch.FloatTensor(self.action[ind]).to(self.device),
-            torch.FloatTensor(self.next_state[ind]).to(self.device),
-            torch.FloatTensor(self.reward[ind]).to(self.device),
-            torch.FloatTensor(self.not_done[ind]).to(self.device),
-            torch.FloatTensor(self.task[ind]).to(self.device),
-            torch.FloatTensor(self.collision_reward[ind]).to(self.device),
-            ind)
+            torch.FloatTensor(self.state[index]).to(self.device),
+            torch.FloatTensor(self.action[index]).to(self.device),
+            torch.FloatTensor(self.next_state[index]).to(self.device),
+            torch.FloatTensor(self.reward[index]).to(self.device),
+            torch.FloatTensor(self.not_done[index]).to(self.device),
+            torch.FloatTensor(self.task[index]).to(self.device),
+            torch.FloatTensor(self.collision_reward[index]).to(self.device),
+            index)
 
     def n_step_return(self, n_step, ind, gamma):
         reward = []
@@ -162,7 +162,6 @@ class ReplayBuffer(object):
 
     def sample_transition(self, n_step=4, gamma=0.99, batch_size=256):
         # Sample replay buffer ("task" for multi-task learning)
-        state, action, next_state, reward, not_done, task, index = self.sample(
-            batch_size)
+        state, action, next_state, reward, not_done, task, collision_reward, index = self.sample(batch_size)
         next_state, reward, not_done, gammas, collision_reward = self.n_step_return(n_step, index, gamma)
         return state, action, next_state, reward, not_done, gammas, collision_reward

@@ -21,20 +21,20 @@ def weights_init_(m):
 
 
 class GaussianActor(nn.Module):
-    def __init__(self, state_preprocess, head, action_dim):
+    def __init__(self, encoder, head, action_dim):
         super(GaussianActor, self).__init__()
 
-        self.state_preprocess = state_preprocess
+        self.encoder = encoder
         self.head = head
-        self.fc_mean = nn.Linear(self.state_preprocess.feature_dim, action_dim)
-        self.fc_log_std = nn.Linear(self.state_preprocess.feature_dim, action_dim)
+        self.fc_mean = nn.Linear(self.encoder.feature_dim, action_dim)
+        self.fc_log_std = nn.Linear(self.encoder.feature_dim, action_dim)
 
         self.head.apply(weights_init_)
         self.fc_mean.apply(weights_init_)
         self.fc_log_std.apply(weights_init_)
 
     def forward(self, state):
-        a = self.state_preprocess(state) if self.state_preprocess else state
+        a = self.encoder(state) if self.encoder else state
         a = self.head(a)
         mean = self.fc_mean(a)
         log_std = torch.tanh(self.fc_log_std(a))
@@ -143,7 +143,6 @@ class SAC(BaseRLAlgo):
         return action
 
     def train_rl(self, state, action, next_state, reward, not_done, gammas, collision_reward):
-        self.total_it += 1
 
         with torch.no_grad():
             next_action, next_log_std, _ = self.actor_target.sample(next_state)

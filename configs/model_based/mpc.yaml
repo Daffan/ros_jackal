@@ -52,7 +52,7 @@ training_config:
     noise_clip: 0.5
     n_step: 4
     # for SMCP
-    horizon: 10
+    horizon: 5
     num_particle: 256
 
   training_args:

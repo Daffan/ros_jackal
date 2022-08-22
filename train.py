@@ -116,7 +116,8 @@ def initialize_policy(config, env, init_buffer=True, device=None):
 
     # initialize actor
     input_dim = training_config['hidden_layer_size']
-    actor = Actor(
+    actor_class = GaussianActor if "SAC" in training_config["algorithm"] else Actor
+    actor = actor_class(
         encoder=get_encoder(encoder_type, encoder_args),
         head=MLP(input_dim, training_config['encoder_num_layers'], training_config['encoder_hidden_layer_size']),
         action_dim=action_dim
@@ -256,11 +257,11 @@ def train(env, policy, replay_buffer, config):
             "n_episode": n_ep,
             "Steps": n_steps
         }
-        if "TD" in training_args["algorithm"] or "DDPG" in training_args["algorithm"]:
+        if "TD" in training_config["algorithm"] or "DDPG" in training_config["algorithm"]:
             log.update({
                 "Exploration_noise": policy.exploration_noise,
             })
-        if "SAC" in training_args["algorithm"]:
+        if "SAC" in training_config["algorithm"]:
             log.update({
                 "Alpha": policy.alpha,
             })

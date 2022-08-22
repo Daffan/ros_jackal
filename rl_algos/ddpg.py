@@ -11,40 +11,6 @@ from torch.distributions import Normal, Categorical
 from rl_algos.base_rl_algo import BaseRLAlgo
 
 
-class Actor(nn.Module):
-    def __init__(self, encoder, head, action_dim):
-        super(Actor, self).__init__()
-
-        self.encoder = encoder
-        self.head = head
-        self.fc = nn.Linear(self.encoder.feature_dim, action_dim)
-
-    def forward(self, state):
-        a = self.encoder(state) if self.encoder else state
-        a = self.head(a)
-        return torch.tanh(self.fc(a))
-
-
-class Critic(nn.Module):
-    def __init__(self, encoder, head):
-        super(Critic, self).__init__()
-
-        # Q1 architecture
-        self.encoder1 = encoder
-        self.head1 = head
-        self.fc1 = nn.Linear(self.encoder1.feature_dim, 1)
-
-    def forward(self, state, action):
-        state1 = self.encoder1(
-            state) if self.encoder1 else state
-        sa1 = torch.cat([state1, action], 1)
-
-        q1 = self.head1(sa1)
-        q1 = self.fc1(q1)
-
-        return q1
-
-
 class DDPG(BaseRLAlgo):
     def __init__(
             self,
@@ -96,13 +62,13 @@ class DDPG(BaseRLAlgo):
             next_action = self.actor_target(next_state).clamp(-1, 1)
 
             # Compute the target Q value
-            target_Q = self.critic_target(next_state, next_action)
+            target_Q = self.critic_target.Q1(next_state, next_action)
             target_Q = reward + not_done * gammas * target_Q
 
         # Get current Q estimates
         action -= self._action_bias
         action /= self._action_scale  # to range of -1, 1
-        current_Q = self.critic(state, action)
+        current_Q = self.critic.Q1(state, action)
 
         # Compute critic loss
         critic_loss = F.mse_loss(current_Q, target_Q)
@@ -114,7 +80,7 @@ class DDPG(BaseRLAlgo):
 
         actor_loss = None
         # Compute actor losse
-        actor_loss = -self.critic(state, self.actor(state)).mean()
+        actor_loss = -self.critic.Q1(state, self.actor(state)).mean()
 
         # Optimize the actor
         self.actor_optimizer.zero_grad()
