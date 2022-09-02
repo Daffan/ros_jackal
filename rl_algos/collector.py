@@ -56,7 +56,6 @@ class LocalCollector(object):
         while n_steps_curr < n_steps:
             act = policy.select_action(obs)
             obs_new, rew, done, info = env.step(act)
-            obs = obs_new
             ep_rew += rew
             ep_len += 1
             n_steps_curr += 1
@@ -68,6 +67,7 @@ class LocalCollector(object):
             self.buffer.add(obs, act,
                             obs_new, rew,
                             done, world, collision_reward)
+            obs = obs_new
             if done:
                 obs = env.reset()
                 results.append(dict(
