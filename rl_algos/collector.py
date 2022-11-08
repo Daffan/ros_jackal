@@ -15,6 +15,12 @@ try:
 except:
     pass
 
+try:
+    import isaacgymenvs
+    import torch
+except:
+    pass
+
 BUFFER_PATH = os.getenv('BUFFER_PATH')
 if not BUFFER_PATH:
     BUFFER_PATH = "local_buffer"
@@ -82,6 +88,96 @@ class LocalCollector(object):
                 ep_len = 0
                 self.global_episodes += 1
             print("n_episode: %d, n_steps: %d" %(self.global_episodes, self.global_steps), end="\r")
+        self.last_obs = obs
+        return n_steps_curr, results
+
+
+class VectorizedCollector(object):
+    '''This is a collector for vectorized environments implemented by IsaacGymEnvs
+    '''
+    def __init__(self, policy, env, replaybuffer):
+        self.policy = policy
+        self.env = env
+        self.num_envs = env.num_envs
+        self.device = policy.device
+        self.buffer = replaybuffer
+
+        self.last_obs = None
+        
+        self.global_episodes = 0
+        self.global_steps = 0
+        self.obss = [[]] * self.num_envs
+        self.acts = [[]] * self.num_envs
+        self.obss_new = [[]] * self.num_envs
+        self.rews = [[]] * self.num_envs
+        self.dones = [[]] * self.num_envs
+        self.worlds = [[]] * self.num_envs
+        self.collision_rewards = [[]] * self.num_envs
+
+
+    def collect(self, n_steps):
+        n_steps_curr = 0
+        env = self.env
+        policy = self.policy
+        results = []
+        
+        ep_rew = np.zeros(self.num_envs, dtype=np.float)
+        ep_len = np.zeros(self.num_envs)
+        
+        if self.last_obs is not None:
+            obs = self.last_obs
+        else:
+            obs = env.reset()
+
+        while n_steps_curr < n_steps:
+            act = policy.select_action(obs["obs"].unsqueeze(1), to_cpu=False)
+            obs_new, rew, done, info = env.step(act)
+            ep_rew += rew.detach().cpu().numpy()
+            ep_len += 1
+            self.global_steps += self.num_envs
+            
+            world = [int(info['world'][i].split("_")[-1].split(".")[0]) for i in range(self.num_envs)]  # task index
+            collision_reward = -info['collision'].to(torch.float)
+
+            [self.obss[i].append(obs["obs"][i].detach().cpu().numpy()) for i in range(self.num_envs)]
+            [self.acts[i].append(act[i].detach().cpu().numpy()) for i in range(self.num_envs)]
+            [self.obss_new[i].append(obs_new["obs"][i].detach().cpu().numpy()) for i in range(self.num_envs)]
+            [self.rews[i].append(rew[i].detach().cpu().numpy()) for i in range(self.num_envs)]
+            [self.dones[i].append(done[i].detach().cpu().numpy()) for i in range(self.num_envs)]
+            [self.worlds[i].append(world[i]) for i in range(self.num_envs)]
+            [self.collision_rewards[i].append(collision_reward[i].detach().cpu().numpy()) for i in range(self.num_envs)]
+
+            for i, d in enumerate(done):
+                if d:
+                    for o, a, on, r, d, w, cr in zip(
+                        self.obss[i], self.acts[i], self.obss_new[i], self.rews[i], self.dones[i], self.worlds[i], self.collision_rewards[i]):
+                        self.buffer.add(o, a,
+                                        on, r,
+                                        d, w, cr)
+
+                    n_steps_curr += len(self.obss[i])
+                    self.obss[i] = []
+                    self.acts[i] = [] 
+                    self.obss_new[i] = [] 
+                    self.rews[i] = [] 
+                    self.dones[i] = [] 
+                    self.worlds[i] = [] 
+                    self.collision_rewards[i] = []
+
+                    results.append(dict(
+                        ep_rew=ep_rew[i], 
+                        ep_len=ep_len[i], 
+                        success=info['success'][i].item(), 
+                        ep_time=ep_len[i], 
+                        world=info['world'][i], 
+                        collision=info['collision'][i].item()
+                    ))
+                    ep_rew[i] = 0
+                    ep_len[i] = 0
+                    self.global_episodes += 1
+            
+            obs = obs_new
+            # print("n_episode: %d, n_steps: %d" %(self.global_episodes, self.global_steps), end="\r")
         self.last_obs = obs
         return n_steps_curr, results
 

@@ -104,7 +104,8 @@ class TD3(BaseRLAlgo):
         self.total_it = 0
 
     def select_action(self, state, to_cpu=True):
-        state = torch.FloatTensor(state).to(self.device)
+        if isinstance(state, np.ndarray):
+            state = torch.FloatTensor(state).to(self.device)
         if len(state.shape) < 3:
             state = state[None, :, :]
         action = self.actor(state)

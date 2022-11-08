@@ -14,6 +14,11 @@ import time
 import uuid
 from pprint import pformat
 
+try:
+    import isaacgym
+    import isaacgymenvs
+except:
+    pass
 import torch
 from tensorboardX import SummaryWriter
 
@@ -26,7 +31,7 @@ from rl_algos.sac import GaussianActor
 from rl_algos.td3 import Actor, Critic #, TD3, ReplayBuffer
 from rl_algos.model_based import Model
 # from rl_algos.safe_td3 import SafeTD3
-from rl_algos.collector import ContainerCollector, LocalCollector
+from rl_algos.collector import ContainerCollector, LocalCollector, VectorizedCollector
 
 def initialize_config(config_path, save_path):
     # Load the config files
@@ -67,11 +72,24 @@ def initialize_logging(config):
 
 def initialize_envs(config):
     env_config = config["env_config"]
-    if env_config["use_container"]:
-        env_config["kwargs"]["init_sim"] = False
-
-    env = gym.make(env_config["env_id"], **env_config["kwargs"])
-    env = StackFrame(env, stack_frame=env_config["stack_frame"])
+    if env_config["env_type"] == "isaac":
+        env = isaacgymenvs.make(
+            seed=0,
+            task="Jackal",
+            num_envs=50,
+            sim_device="cuda:0",
+            rl_device="cuda:0",
+            graphics_device_id=0,
+            headless=True,
+            multi_gpu=False,
+            virtual_screen_capture=False,
+            force_render=False,
+        )
+    else:
+        if env_config["env_type"] == "container":
+            env_config["kwargs"]["init_sim"] = False
+        env = gym.make(env_config["env_id"], **env_config["kwargs"])
+        env = StackFrame(env, stack_frame=env_config["stack_frame"])
     return env
 
 def seed(config):
@@ -204,13 +222,17 @@ def train(env, policy, replay_buffer, config):
     save_path, writer = initialize_logging(config)
     print("    >>>> initialized logging")
     
-    if env_config["use_container"]:
+    if env_config["env_type"] == "container":
         collector = ContainerCollector(policy, env, replay_buffer, config)
-    else:
+    elif env_config["env_type"] == "isaac":
+        collector = VectorizedCollector(policy, env, replay_buffer)
+    elif env_config["env_type"] == "gazebo":
         collector = LocalCollector(policy, env, replay_buffer)
+    else:
+        raise ValueError
 
-    training_args = training_config["training_args"]
     print("    >>>> Pre-collect experience")
+    training_args = training_config["training_args"]
     collector.collect(n_steps=training_config['pre_collect'])
     print("    >>>> Start training")
 
