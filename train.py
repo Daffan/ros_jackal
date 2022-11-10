@@ -76,7 +76,7 @@ def initialize_envs(config):
         env = isaacgymenvs.make(
             seed=0,
             task="Jackal",
-            num_envs=50,
+            num_envs=16,
             sim_device="cuda:0",
             rl_device="cuda:0",
             graphics_device_id=0,
