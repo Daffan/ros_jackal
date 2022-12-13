@@ -130,7 +130,7 @@ class VectorizedCollector(object):
             obs = env.reset()
 
         while n_steps_curr < n_steps:
-            act = policy.select_action(obs["obs"].unsqueeze(1), to_cpu=False)
+            act = policy.select_action(obs["obs"].unsqueeze(1), to_cpu=False).detach()
             obs_new, rew, done, info = env.step(act)
             ep_rew += rew.detach().cpu().numpy()
             ep_len += 1
