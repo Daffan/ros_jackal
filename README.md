@@ -1,5 +1,5 @@
 # ROS-Jackal
-This is the repository for the under review paper "[Benchmarking Reinforcement Learning Techniques for Autonomous Navigation]()".
+This is the repository for the paper "[Benchmarking Reinforcement Learning Techniques for Autonomous Navigation](https://arxiv.org/abs/2210.04839)".
 
 The results shown in the paper use Condor Cluster to distribute 100 actors for collecting trajectories. This setting can greatly speed up the training and make it feasible to finish all the experiments presented in the paper, however Condor Cluster is relatively inaccessible to most users. Instead, to guarantee reproducibility, we provide this version of repository that distributes the actors over 10 Singularity containers that can run locally on a single machine.
 
@@ -52,7 +52,7 @@ catkin_make
 
 Pull image file (modify the <FOLDER_PATH_TO_SAVE_IMAGE> in the command, image file size ~ 3G; [XXX] is the anonymized singularity cloud account)
 ```
-singularity pull --name <PATH_TO_THIS_REPO>/local_buffer/image:latest.sif library://[XXX]]/ros_jackal_image/image:latest
+singularity pull --name <PATH_TO_THIS_REPO>/local_buffer/image:latest.sif library://zifan/ros_jackal_image/image:latest
 ```
 ```
 ./singularity_run.sh <PATH_TO_THIS_REPO>/local_buffer/nav_benchmark.sif python3 test_env.py
@@ -61,7 +61,7 @@ singularity pull --name <PATH_TO_THIS_REPO>/local_buffer/image:latest.sif librar
 ## Train a deep RL navigation policy
 To train a navigation policy, you just need to specify a ```.yaml``` file that includes the parameters for specific experiment. For instance,
 ```
-python train.py --config configs/e2e_default.yaml
+python train.py --config configs/e2e_default_TD3.yaml
 ```
 We provide the full list of ```.yaml``` files used in our experiment in the end.
 
