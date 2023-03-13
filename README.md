@@ -50,9 +50,9 @@ catkin_make
 
 4. Verify your installation: (this script will run open-ai gym environment for 5 episodes)
 
-Pull image file (modify the <FOLDER_PATH_TO_SAVE_IMAGE> in the command, image file size ~ 3G; [XXX] is the anonymized singularity cloud account)
+Pull image file (modify the <FOLDER_PATH_TO_SAVE_IMAGE> in the command, image file size ~ 3G
 ```
-singularity pull --name <PATH_TO_THIS_REPO>/local_buffer/image:latest.sif library://zifan/ros_jackal_image/image:latest
+singularity pull --name <PATH_TO_THIS_REPO>/local_buffer/image:latest.sif library://zifanxu/ros_jackal_image/image:latest
 ```
 ```
 ./singularity_run.sh <PATH_TO_THIS_REPO>/local_buffer/nav_benchmark.sif python3 test_env.py
