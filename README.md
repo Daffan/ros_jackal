@@ -15,7 +15,7 @@ cd ros_jackal
 pip install -r requirements.txt
 ```
 
-2. Follow this instruction to install Singularity: https://sylabs.io/guides/3.0/user-guide/installation.html. Singularity version >= 3.6.3 is recommended to build the image.
+2. Follow this instruction to install Singularity: https://docs.sylabs.io/guides/latest/admin-guide/installation.html#installation-on-linux. Singularity version >= 3.6.3 is **required** to build the image.
 
 3. (Only do following step if you really need!) The code does not require ROS installation, since the rollout happens in the container, but if you have need to develop based on our repo, running ROS and Gazebo simulation out of the container enables GUI and is easier to debug. Follow steps below to install ROS dependencies (assume `melodic` ROS installed already):
 
