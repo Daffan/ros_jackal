@@ -1,5 +1,5 @@
 env_config:
-  use_container: True
+  collector: "container"
   env_id: "motion_control_continuous_laser-v0"
   seed: 14
   stack_frame: 1   # span 1, 4, 8

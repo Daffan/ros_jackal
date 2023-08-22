@@ -26,7 +26,7 @@ from rl_algos.sac import GaussianActor
 from rl_algos.td3 import Actor, Critic #, TD3, ReplayBuffer
 from rl_algos.model_based import Model
 # from rl_algos.safe_td3 import SafeTD3
-from rl_algos.collector import ContainerCollector, LocalCollector
+from rl_algos.collector import ContainerCollector, LocalCollector, ClusterCollector
 
 def initialize_config(config_path, save_path):
     # Load the config files
@@ -67,7 +67,7 @@ def initialize_logging(config):
 
 def initialize_envs(config):
     env_config = config["env_config"]
-    if env_config["use_container"]:
+    if env_config["collector"] != "local":
         env_config["kwargs"]["init_sim"] = False
 
     env = gym.make(env_config["env_id"], **env_config["kwargs"])
@@ -204,10 +204,14 @@ def train(env, policy, replay_buffer, config):
     save_path, writer = initialize_logging(config)
     print("    >>>> initialized logging")
     
-    if env_config["use_container"]:
+    if env_config['collector'] == 'container':
         collector = ContainerCollector(policy, env, replay_buffer, config)
-    else:
+    elif env_config['collector'] == 'local':
         collector = LocalCollector(policy, env, replay_buffer)
+    elif env_config['collector'] == 'cluster':
+        collector = ClusterCollector(policy, env, replay_buffer, config)
+    else:
+        raise ValueError
 
     training_args = training_config["training_args"]
     print("    >>>> Pre-collect experience")

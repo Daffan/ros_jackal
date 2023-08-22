@@ -224,3 +224,25 @@ class ContainerCollector(object):
                 # os.remove(join(base, p))
                 pass
         return steps, trajs, results
+
+
+class ClusterCollector(ContainerCollector):
+    def collect(self, n_steps):
+        """ This method searches the buffer folder and collect all the saved trajectories
+        """
+        # collect happens after policy is updated
+        # save the updated policy to the buffer
+        self.update_policy("policy")
+        steps = 0
+        results = []
+
+        while steps < n_steps:
+            # run actors separately in different terminals or computing nodes
+            np.random.shuffle(self.ids)
+            for id in self.ids:
+                id_steps, id_trajs, id_results = self.collect_worker_traj(id)
+                steps += id_steps
+                results.extend(id_results)
+                for t in id_trajs:
+                    self.buffer_expand(t)
+        return steps, results

@@ -67,6 +67,26 @@ We provide the full list of ```.yaml``` files used in our experiment in the end.
 
 This repo saves the collected trajectories from each actor in a local buffer folder, also actors load the recent policy from this folder. By default, buffer folder is a folder named `local_buffer` in current dictionary. You can specify a new folder as `export BUFFER_FOLDER=/PATH/TO/YOUR/BUFFER_FOLDER`. The logging files can be found under folder `logging`.
 
+## Train in computing cluster
+Cluster requires a shared file system, where multiple actors load the lastest policy, rollout, and save the trajectory in the `BUFFER_FOLDER`. Then, a critic collects trajectories from `BUFFER_FOLDER` and updates the policy.
+
+This is asyncronized training pipeline, namely the actors might fall behind and do not generate trajectories from the latest policy.
+
+1. Download the Singularity image
+```
+singularity pull --name <PATH/TO/IMAGE>/image:latest.sif library://zifanxu/ros_jackal_image/image:latest
+```
+2. On critic computing node
+```
+export BUFFER_PATH=<BUFFER_PATH>
+./singularity_run.sh <PATH/TO/IMAGE>/image:latest.sif python train.py --config configs/e2e_default_TD3_cluster.yaml
+```
+3. On actor computing node 0 (you need to run `0-50` computing nodes as defined in line 60 in `container_config.yaml`).
+```
+export BUFFER_PATH=<BUFFER_PATH>
+./singularity_run.sh <PATH/TO/IMAGE>/image:latest.sif python actor.py --id 0
+```
+
 ## Results
 Success rate of policies trained with different neural network architectures and history lengths in static (top) and dynamic-wall (bottom) environments.
 
