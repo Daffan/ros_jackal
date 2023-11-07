@@ -139,13 +139,14 @@ class VectorizedCollector(object):
             world = [int(info['world'][i].split("_")[-1].split(".")[0]) for i in range(self.num_envs)]  # task index
             collision_reward = -info['collision'].to(torch.float)
 
-            [self.obss[i].append(obs["obs"][i].detach().cpu().numpy()) for i in range(self.num_envs)]
-            [self.acts[i].append(act[i].detach().cpu().numpy()) for i in range(self.num_envs)]
-            [self.obss_new[i].append(obs_new["obs"][i].detach().cpu().numpy()) for i in range(self.num_envs)]
-            [self.rews[i].append(rew[i].detach().cpu().numpy()) for i in range(self.num_envs)]
-            [self.dones[i].append(done[i].detach().cpu().numpy()) for i in range(self.num_envs)]
-            [self.worlds[i].append(world[i]) for i in range(self.num_envs)]
-            [self.collision_rewards[i].append(collision_reward[i].detach().cpu().numpy()) for i in range(self.num_envs)]
+            for i in range(self.num_envs):
+                self.obss[i].append(obs["obs"][i].detach().cpu().numpy())
+                self.acts[i].append(act[i].detach().cpu().numpy())
+                self.obss_new[i].append(obs_new["obs"][i].detach().cpu().numpy())
+                self.rews[i].append(rew[i].detach().cpu().numpy())
+                self.dones[i].append(done[i].detach().cpu().numpy())
+                self.worlds[i].append(world[i])
+                self.collision_rewards[i].append(collision_reward[i].detach().cpu().numpy())
 
             for i, d in enumerate(done):
                 if d:
