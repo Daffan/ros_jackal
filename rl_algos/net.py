@@ -1,8 +1,12 @@
 import numpy as np
 import torch
 import torch.nn as nn
-import transformers
-from rl_algos.trajectory_gpt2 import GPT2Model
+try:
+    import transformers
+    from rl_algos.trajectory_gpt2 import GPT2Model
+except:
+    print("transformers not installed")
+    pass
 
 class Encoder(nn.Module):
     """

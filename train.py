@@ -1,5 +1,4 @@
 import argparse
-import GPUtil
 import yaml
 import numpy as np
 import gym
@@ -15,7 +14,11 @@ import uuid
 from pprint import pformat
 
 import torch
-from tensorboardX import SummaryWriter
+try:
+    import GPUtil
+    from tensorboardX import SummaryWriter
+except:
+    pass
 
 from envs import registration
 from envs.wrappers import StackFrame
