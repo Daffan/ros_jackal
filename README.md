@@ -44,8 +44,8 @@ rosdep install -y --from-paths . --ignore-src --rosdistro=melodic
 
 * Build the workspace
 ```
-source devel/setup.bash
 catkin_make
+source devel/setup.bash
 ```
 
 4. Verify your installation: (this script will run open-ai gym environment for 5 episodes)
